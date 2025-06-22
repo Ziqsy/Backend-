@@ -1,0 +1,49 @@
+🧭 1. Navigation & Access Control
+Feature	Description
+🔐 Login System	Secure employee-only login (username/password, stored hashed in DB)
+🗂️ Sidebar Navigation	Collapsible left panel with: Sections → Pages
+➕ Add Section/Page	UI to create new Sections and assign new Pages under them
+📑 Page Typing	Each Page must be one of: Link Operations, Lists, Data Sets, or Repository
+
+📄 2. Page Types (Templates + Functionality)
+🔗 Type 1: Link Operations Page
+Feature	Description
+📤 CSV Upload	Upload defines new MySQL table schema dynamically (text-only fields)
+📚 Category Grouping	Category 1 > Category 2 > ... structure shown as collapsible groupings
+🧱 Card Display	Lowest-level items shown as cards in center column
+📝 Edit Panel	Right-side form (45% width) with inline editing and updating to DB
+🗑️ Delete & Export	Delete row, Export to CSV
+⬆️ Multiple CSVs	Appends new fields as new columns if headers differ
+
+📋 Type 2: List Page
+Feature	Description
+📥 CSV Upload	Defines new table structure (same as LinkOps, but flat table)
+🧾 Editable Table	Inline CRUD (edit, add, delete) on table itself
+✅ Review Status	Final approval checkbox at end of each row
+⬆️ Add Columns	On second CSV upload, new headers become new fields
+
+📊 Type 3: Data Set Page
+Feature	Description
+📁 Upload CSV/JSON/MD	Multi-format support for data uploads
+🔄 CRUD Support	View, edit, delete data rows and fields
+🧹 Cleaning Tools	Basic data cleaning (remove nulls, standardize formats)
+📈 Charts & Stats	Auto-chart generator from data
+🤖 LLM Assistant	Chat-based assistant to: review dataset, suggest transformations, rename fields, or generate visual flow
+📤 Export	Export final dataset
+🔗 Data Comparison	Compare across datasets; find duplicates, join fields
+
+🗂️ Type 4: Repository Page
+Feature	Description
+☁️ Cloud Folder Link	User selects a OneDrive/Google Drive folder path
+🌲 File Tree View	Display nested folders/files with search
+📃 File Descriptions	Editable descriptions for each file
+🔗 Click to Open	Clickable link to open files in new tab
+📇 Tagging	Optional field tags for easier search/filter
+
+🧩 3. System-Level Features
+Feature	Description
+⚙️ Configurable DB Engine	MySQL tables per CSV page type with automatic table creation
+🧾 Logs & Audit Trail	Optional logging of uploads, edits, deletions
+🔍 Global Search	Top-bar universal search (Pages, Files, Data)
+🛠️ Responsive UI	Mobile/tablet friendly, consistent layout spacing
+🎨 Theme	Minimalist, compact layout with low whitespace, neutral colors (beige/mauve), text-based Ziqsy logo with DNA in "i"

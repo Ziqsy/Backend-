@@ -1,0 +1,107 @@
+<!-- Create Section Modal -->
+<div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSectionModalLabel">Create New Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_section') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sectionName" class="form-label">Section Name</label>
+                        <input type="text" class="form-control" id="sectionName" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Section</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Page Modal -->
+<div class="modal fade" id="createPageModal" tabindex="-1" aria-labelledby="createPageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPageModalLabel">Create New Page</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_page') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="pageName" class="form-label">Page Name</label>
+                        <input type="text" class="form-control" id="pageName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageType" class="form-label">Page Type</label>
+                        <select class="form-select" id="pageType" name="page_type" required>
+                            <option value="">Select page type...</option>
+                            <option value="link_operations">Link Operations</option>
+                            <option value="list">List</option>
+                            <option value="dataset">Dataset</option>
+                            <option value="repository">Repository</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageSection" class="form-label">Section</label>
+                        <select class="form-select" id="pageSection" name="section_id" required>
+                            <option value="">Select section...</option>
+                            {% if sections %}
+                                {% for section in sections %}
+                                <option value="{{ section.id }}">{{ section.name }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-title {
+    color: var(--text-color);
+}
+
+.form-label {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.form-control,
+.form-select {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: var(--input-bg);
+    border-color: var(--accent-color);
+    color: var(--text-color);
+    box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.25);
+}
+</style>

@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}{{ doc_title }} - Ziqsy Internal{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/dashboard" class="ziqsy-logo-link">
+                <h3 class="ziqsy-logo">Z<span class="dna-i">i</span>qsy</h3>
+            </a>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+
+            
+            <!-- Categories section -->
+            <div class="categories-header mb-2">
+                <h6 class="mb-0 text-uppercase text-white" style="font-size: 0.75rem; letter-spacing: 0.5px;">Categories</h6>
+            </div>
+            
+            <div class="sidebar-actions mb-3">
+                <button class="btn btn-sm btn-outline-light mb-2 sidebar-btn" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+                    <i class="fas fa-plus"></i>
+                    <span>New Section</span>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary sidebar-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                    <i class="fas fa-folder"></i>
+                    <span>Add Page</span>
+                </button>
+            </div>
+            
+            <div class="sections-list">
+                {% for section in sections %}
+                <div class="section-item">
+                    <div class="section-header">
+                        <h6 class="section-name">{{ section.name }}</h6>
+                    </div>
+                    <div class="pages-list">
+                        {% for p in section.pages %}
+                        <div class="page-item">
+                            <a href="{{ url_for('view_page', page_id=p.id) }}" class="page-link sidebar-btn">
+                                <i class="fas fa-{{ 'link' if p.page_type == 'link_operations' else 'list' if p.page_type == 'list' else 'chart-bar' if p.page_type == 'dataset' else 'folder' }}"></i>
+                                <span>{{ p.name }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="theme-selector mb-3">
+                <label class="theme-label mb-2 d-block">Theme:</label>
+                <select class="theme-dropdown w-100" id="themeSelector" onchange="changeTheme()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="modern">Modern</option>
+                    <option value="oldschool">Old School</option>
+                    <option value="steel">Steel</option>
+                    <option value="gold">Gold</option>
+                </select>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light sidebar-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="content-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <a href="{{ url_for('documentation') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Docs
+                    </a>
+                    <h2 class="mb-0">{{ doc_title }}</h2>
+                    <span class="badge bg-info">Documentation</span>
+                </div>
+                <div class="doc-actions">
+                    <a href="{{ url_for('download_documentation', doc_type=doc_type) }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-download me-1"></i>Download
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="document-content">
+            <div class="document-wrapper">
+                {{ content | safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.document-content {
+    padding: 20px;
+    background: var(--primary-bg);
+}
+
+.document-wrapper {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.document-wrapper h1 {
+    color: var(--text-color);
+    border-bottom: 3px solid var(--accent-color);
+    padding-bottom: 15px;
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+}
+
+.document-wrapper h2 {
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-top: 40px;
+    margin-bottom: 20px;
+    font-size: 2rem;
+}
+
+.document-wrapper h3 {
+    color: var(--accent-color);
+    margin-top: 30px;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+.document-wrapper h4 {
+    color: var(--text-color);
+    margin-top: 25px;
+    margin-bottom: 12px;
+    font-size: 1.25rem;
+}
+
+.document-wrapper h5,
+.document-wrapper h6 {
+    color: var(--text-color);
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.document-wrapper p {
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-bottom: 16px;
+}
+
+.document-wrapper ul,
+.document-wrapper ol {
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.document-wrapper li {
+    margin-bottom: 8px;
+}
+
+.document-wrapper code {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.document-wrapper pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 20px 0;
+    border: 1px solid var(--border-color);
+}
+
+.document-wrapper pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+}
+
+.document-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.document-wrapper th {
+    background: var(--accent-color);
+    color: white;
+    padding: 15px 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.document-wrapper td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-muted);
+    vertical-align: top;
+}
+
+.document-wrapper tr:hover {
+    background: var(--hover-bg);
+}
+
+.document-wrapper blockquote {
+    border-left: 4px solid var(--accent-color);
+    padding: 15px 20px;
+    margin: 20px 0;
+    background: var(--code-bg);
+    color: var(--text-muted);
+    border-radius: 0 8px 8px 0;
+}
+
+.document-wrapper strong,
+.document-wrapper b {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.document-wrapper a {
+    color: var(--accent-color);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.document-wrapper a:hover {
+    border-bottom-color: var(--accent-color);
+}
+
+/* Table of contents styling */
+.document-wrapper ul li::before {
+    content: "▶ ";
+    color: var(--accent-color);
+    margin-right: 8px;
+}
+
+/* Nested list styling */
+.document-wrapper ul ul li::before {
+    content: "▸ ";
+    color: var(--info-color);
+}
+
+.sidebar-controls {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 15px;
+}
+
+.control-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white;
+    font-weight: 600;
+}
+
+.width-display {
+    font-size: 0.75rem;
+    color: white;
+    min-width: 45px;
+    text-align: center;
+}
+
+.form-range {
+    height: 4px;
+}
+
+.form-range::-webkit-slider-thumb {
+    background: var(--accent-color);
+}
+
+.form-range::-moz-range-thumb {
+    background: var(--accent-color);
+    border: none;
+}
+</style>
+
+
+
+{% include 'dashboard_modals.html' %}
+{% endblock %}

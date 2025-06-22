@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Ziqsy Internal{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body data-theme="dark">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Floating Navigation Icons -->
+    <div class="floating-nav">
+        <a href="/dashboard" class="float-nav-icon" title="Dashboard">
+            <i class="fas fa-tachometer-alt"></i>
+        </a>
+        <a href="/docs" class="float-nav-icon" title="Documentation">
+            <i class="fas fa-book"></i>
+        </a>
+        {% if session.get('user_email') and (session.get('user_email').endswith('@ziqsy.com') or session.get('user_email').endswith('@technicologyltd.com')) %}
+        <a href="/admin/users" class="float-nav-icon" title="User Management">
+            <i class="fas fa-users"></i>
+        </a>
+        {% endif %}
+        <a href="/logout" class="float-nav-icon logout-float" title="Logout">
+            <i class="fas fa-sign-out-alt"></i>
+        </a>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js for datasets -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <!-- Global Theme Management -->
+    <script>
+        // Theme management
+        function changeTheme() {
+            const themeSelector = document.getElementById('themeSelector');
+            const selectedTheme = themeSelector.value;
+            document.body.setAttribute('data-theme', selectedTheme);
+            localStorage.setItem('selectedTheme', selectedTheme);
+            
+            // Save to user preferences if logged in
+            fetch('/api/theme', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ theme: selectedTheme })
+            }).catch(() => {
+                // Silent fail for theme saving
+            });
+        }
+
+        // Sidebar drag resize functionality
+        function initializeSidebarResize() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const resizeHandle = document.createElement('div');
+            
+            if (!sidebar || !mainContent) return;
+            
+            // Create resize handle
+            resizeHandle.className = 'sidebar-resize-handle';
+            sidebar.appendChild(resizeHandle);
+            
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
+            
+            // Load saved width
+            fetch('/api/sidebar/width')
+                .then(response => response.json())
+                .then(data => {
+                    const width = data.width || 280;
+                    applySidebarWidth(width);
+                })
+                .catch(() => {
+                    applySidebarWidth(280); // Default width
+                });
+            
+            // Mouse down on resize handle
+            resizeHandle.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+                sidebar.classList.add('resizing');
+                document.body.style.cursor = 'ew-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+            
+            // Mouse move - resize sidebar
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+                
+                const width = startWidth + e.clientX - startX;
+                const constrainedWidth = Math.min(Math.max(200, width), 500); // Min 200px, Max 500px
+                
+                applySidebarWidth(constrainedWidth);
+                e.preventDefault();
+            });
+            
+            // Mouse up - stop resizing
+            document.addEventListener('mouseup', function() {
+                if (isResizing) {
+                    isResizing = false;
+                    sidebar.classList.remove('resizing');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    
+                    // Save new width
+                    const finalWidth = parseInt(sidebar.style.width, 10);
+                    fetch('/api/sidebar/width', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ width: finalWidth })
+                    }).catch(() => {
+                        // Silent fail for width saving
+                    });
+                }
+            });
+            
+            // Touch events for mobile
+            resizeHandle.addEventListener('touchstart', function(e) {
+                isResizing = true;
+                startX = e.touches[0].clientX;
+                startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+                sidebar.classList.add('resizing');
+                e.preventDefault();
+            });
+            
+            document.addEventListener('touchmove', function(e) {
+                if (!isResizing) return;
+                
+                const width = startWidth + e.touches[0].clientX - startX;
+                const constrainedWidth = Math.min(Math.max(200, width), 500);
+                
+                applySidebarWidth(constrainedWidth);
+                e.preventDefault();
+            });
+            
+            document.addEventListener('touchend', function() {
+                if (isResizing) {
+                    isResizing = false;
+                    sidebar.classList.remove('resizing');
+                    
+                    // Save new width
+                    const finalWidth = parseInt(sidebar.style.width, 10);
+                    fetch('/api/sidebar/width', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ width: finalWidth })
+                    }).catch(() => {
+                        // Silent fail for width saving
+                    });
+                }
+            });
+        }
+
+        function applySidebarWidth(width) {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (sidebar && mainContent) {
+                sidebar.style.width = width + 'px';
+                mainContent.style.marginLeft = width + 'px';
+                
+                // Update CSS custom property for responsive elements
+                document.documentElement.style.setProperty('--sidebar-width', width + 'px');
+            }
+        }
+
+        // Load saved theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get theme from server or localStorage
+            const serverTheme = "{{ session.get('theme_preference', 'dark') }}";
+            const savedTheme = serverTheme !== 'dark' ? serverTheme : localStorage.getItem('selectedTheme') || 'dark';
+            
+            document.body.setAttribute('data-theme', savedTheme);
+            
+            // Update theme selector if it exists
+            const themeSelector = document.getElementById('themeSelector');
+            if (themeSelector) {
+                themeSelector.value = savedTheme;
+            }
+        });
+
+        // Sidebar toggle function
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (window.innerWidth <= 768) {
+                // Mobile behavior
+                sidebar.classList.toggle('mobile-open');
+                const overlay = document.getElementById('mobileOverlay');
+                if (overlay) {
+                    overlay.classList.toggle('active');
+                }
+            } else {
+                // Desktop behavior
+                if (sidebar) {
+                    sidebar.classList.toggle('collapsed');
+                    if (mainContent) {
+                        mainContent.classList.toggle('collapsed');
+                    }
+                }
+            }
+        }
+        
+        // Mobile sidebar management
+        function setupMobileSidebar() {
+            // Create mobile overlay
+            if (!document.getElementById('mobileOverlay')) {
+                const overlay = document.createElement('div');
+                overlay.id = 'mobileOverlay';
+                overlay.className = 'mobile-overlay';
+                overlay.onclick = toggleSidebar;
+                document.body.appendChild(overlay);
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('mobileOverlay');
+                
+                if (window.innerWidth > 768) {
+                    // Desktop mode
+                    if (sidebar) {
+                        sidebar.classList.remove('mobile-open');
+                    }
+                    if (overlay) {
+                        overlay.classList.remove('active');
+                    }
+                } else {
+                    // Mobile mode - reset collapsed state
+                    if (sidebar) {
+                        sidebar.classList.remove('collapsed');
+                    }
+                    const mainContent = document.getElementById('mainContent');
+                    if (mainContent) {
+                        mainContent.classList.remove('collapsed');
+                    }
+                }
+            });
+        }
+        
+        // Initialize mobile sidebar on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setupMobileSidebar();
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

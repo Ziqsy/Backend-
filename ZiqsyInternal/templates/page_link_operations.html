@@ -1,0 +1,791 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.name }} - Link Operations{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/dashboard" class="ziqsy-logo-link">
+                <h3 class="ziqsy-logo">Z<span class="dna-i">i</span>qsy</h3>
+            </a>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+
+            
+            <!-- Categories section -->
+            <div class="categories-header mb-2">
+                <h6 class="mb-0 text-uppercase text-white" style="font-size: 0.75rem; letter-spacing: 0.5px;">Categories</h6>
+            </div>
+            
+            <div class="sidebar-actions mb-3">
+                <button class="btn btn-sm btn-outline-light mb-2 sidebar-btn" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+                    <i class="fas fa-plus"></i>
+                    <span>New Section</span>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary sidebar-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                    <i class="fas fa-folder"></i>
+                    <span>Add Page</span>
+                </button>
+            </div>
+            
+            <div class="sections-list">
+                {% for section in sections %}
+                <div class="section-item">
+                    <div class="section-header">
+                        <h6 class="section-name">{{ section.name }}</h6>
+                    </div>
+                    <div class="pages-list">
+                        {% for p in section.pages %}
+                        <div class="page-item {{ 'active' if p.id == page.id else '' }}">
+                            <a href="{{ url_for('view_page', page_id=p.id) }}" class="page-link sidebar-btn">
+                                <i class="fas fa-{{ 'link' if p.page_type == 'link_operations' else 'list' if p.page_type == 'list' else 'chart-bar' if p.page_type == 'dataset' else 'folder' }}"></i>
+                                <span>{{ p.name }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="theme-selector mb-3">
+                <label class="theme-label mb-2 d-block">Theme:</label>
+                <select class="theme-dropdown w-100" id="themeSelector" onchange="changeTheme()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="modern">Modern</option>
+                    <option value="oldschool">Old School</option>
+                    <option value="steel">Steel</option>
+                    <option value="gold">Gold</option>
+                </select>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light sidebar-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="content-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <h2 class="mb-0">{{ page.name }} (Link Operations)</h2>
+                    {% if page.table_name %}
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('export_page_data', page_id=page.id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-download me-1"></i>Export
+                        </a>
+                        <button class="btn btn-outline-success btn-sm" onclick="copyAllData()">
+                            <i class="fas fa-copy me-1"></i>Copy All
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="upload-form">
+                    <form method="POST" action="{{ url_for('upload_file', page_id=page.id) }}" enctype="multipart/form-data" class="compact-form d-flex align-items-center gap-2">
+                        <input type="file" name="file" accept=".csv,.xlsx,.xls" required class="form-control form-control-sm" style="width: 200px;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-upload me-1"></i>Upload
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="link-operations-layout">
+            <!-- Categories Section -->
+            <div class="categories-section">
+                <!-- Mobile dropdown version -->
+                <div class="mobile-category-filters d-md-none">
+                    <div class="mb-2">
+                        <label class="form-label">Filter by Categories:</label>
+                    </div>
+                    <div id="mobileCategoryDropdowns">
+                        <!-- Dynamic dropdowns will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Desktop card version -->
+                <div class="desktop-category-filters d-none d-md-block">
+                    <div id="categoryFilters">
+                        <!-- Dynamic category filter cards will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Items and Form Section -->
+            <div class="items-and-form">
+                <div class="items-panel">
+                    <h5>Items <span id="itemCount" class="text-muted">(0)</span></h5>
+                    <div id="itemsGrid" class="items-grid">
+                        <!-- Item cards will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="edit-panel">
+                    <h5>Edit Item</h5>
+                    <div class="edit-content">
+                        <div id="editForm" class="edit-form">
+                            <p class="text-muted">Select an item to edit</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let pageData = [];
+let currentItem = null;
+let categoryFilters = {};
+let categoryColumns = [];
+
+// Load data when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadPageData();
+});
+
+function loadPageData() {
+    fetch(`/api/page/{{ page.id }}/data`)
+        .then(response => {
+            if (!response.ok) {
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Loaded data:', data);
+            pageData = Array.isArray(data) ? data : [];
+            if (pageData.length > 0) {
+                identifyCategoryColumns();
+                renderCategoryFilters();
+                renderItems();
+            } else {
+                document.getElementById('categoryFilters').innerHTML = '<p class="text-muted">Upload a CSV file to get started.</p>';
+                document.getElementById('itemsGrid').innerHTML = '<p class="text-muted">No data available</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
+            document.getElementById('categoryFilters').innerHTML = '<p class="text-muted">Upload a CSV file to get started.</p>';
+            document.getElementById('itemsGrid').innerHTML = '<p class="text-muted">No data available</p>';
+        });
+}
+
+function identifyCategoryColumns() {
+    if (pageData.length === 0) return;
+    
+    const columns = Object.keys(pageData[0]);
+    categoryColumns = columns.filter(col => 
+        col.toLowerCase().includes('category') || 
+        col.toLowerCase().includes('group') ||
+        col.toLowerCase().includes('type')
+    ).sort();
+    
+    // Initialize filters
+    categoryFilters = {};
+    categoryColumns.forEach(col => {
+        categoryFilters[col] = null;
+    });
+}
+
+function renderCategoryFilters() {
+    const desktopFiltersContainer = document.getElementById('categoryFilters');
+    const mobileFiltersContainer = document.getElementById('mobileCategoryDropdowns');
+    
+    if (categoryColumns.length === 0) {
+        desktopFiltersContainer.innerHTML = '<div class="category-filter-card"><p class="text-muted">No category columns found</p></div>';
+        mobileFiltersContainer.innerHTML = '<p class="text-muted">No category columns found</p>';
+        return;
+    }
+    
+    // Desktop dropdown version
+    let desktopHtml = '';
+    categoryColumns.forEach((column, index) => {
+        const options = getFilteredOptions(column, index);
+        
+        desktopHtml += `
+            <div class="category-filter-card">
+                <label class="form-label">${column.replace(/_/g, ' ').toUpperCase()}</label>
+                <select class="form-select form-select-sm" 
+                        onchange="selectCategoryFilter('${column}', this.value || null)">
+                    <option value="">All</option>
+                    ${options.map(option => `
+                        <option value="${option}" ${categoryFilters[column] === option ? 'selected' : ''}>${option}</option>
+                    `).join('')}
+                </select>
+            </div>
+        `;
+    });
+    
+    // Mobile dropdown version
+    let mobileHtml = '';
+    categoryColumns.forEach((column, index) => {
+        const options = getFilteredOptions(column, index);
+        
+        mobileHtml += `
+            <div class="mb-2">
+                <select class="form-select form-select-sm" 
+                        onchange="selectCategoryFilter('${column}', this.value || null)">
+                    <option value="">${column.replace(/_/g, ' ').toUpperCase()}: All</option>
+                    ${options.map(option => `
+                        <option value="${option}" ${categoryFilters[column] === option ? 'selected' : ''}>${option}</option>
+                    `).join('')}
+                </select>
+            </div>
+        `;
+    });
+    
+    desktopFiltersContainer.innerHTML = desktopHtml;
+    mobileFiltersContainer.innerHTML = mobileHtml;
+}
+
+function getFilteredOptions(column, columnIndex) {
+    let filteredData = pageData;
+    
+    // Apply filters from previous category levels
+    for (let i = 0; i < columnIndex; i++) {
+        const prevColumn = categoryColumns[i];
+        if (categoryFilters[prevColumn]) {
+            filteredData = filteredData.filter(item => item[prevColumn] === categoryFilters[prevColumn]);
+        }
+    }
+    
+    // Get unique options for current column and filter out numeric values
+    const options = [...new Set(filteredData.map(item => item[column] || 'Uncategorized'))]
+        .filter(option => {
+            // Filter out percentage numbers and 'nan' values
+            if (option === 'nan' || option === 'Uncategorized') return option === 'Uncategorized';
+            const numericValue = parseFloat(option);
+            return isNaN(numericValue) || option.toString().length > 10; // Keep non-numeric or long text values
+        });
+    return options.sort();
+}
+
+function selectCategoryFilter(column, value) {
+    // Set the filter
+    categoryFilters[column] = value;
+    
+    // Clear filters for subsequent columns
+    const columnIndex = categoryColumns.indexOf(column);
+    for (let i = columnIndex + 1; i < categoryColumns.length; i++) {
+        categoryFilters[categoryColumns[i]] = null;
+    }
+    
+    // Re-render filters and items
+    renderCategoryFilters();
+    renderItems();
+}
+
+function renderCategoryTree(categories, level = 0) {
+    let html = '';
+    for (const [name, data] of Object.entries(categories)) {
+        const hasChildren = Object.keys(data.children).length > 0;
+        html += `
+            <div class="category-item" style="margin-left: ${level * 20}px" onclick="selectCategory('${name}')">
+                ${hasChildren ? '<i class="fas fa-folder me-1"></i>' : '<i class="fas fa-tag me-1"></i>'}
+                ${name}
+            </div>
+        `;
+        if (hasChildren) {
+            html += renderCategoryTree(data.children, level + 1);
+        }
+    }
+    return html;
+}
+
+function renderItems() {
+    const itemsGrid = document.getElementById('itemsGrid');
+    const itemCount = document.getElementById('itemCount');
+    
+    if (pageData.length === 0) {
+        itemsGrid.innerHTML = '<p class="text-muted">No items to display</p>';
+        itemCount.textContent = '(0)';
+        return;
+    }
+    
+    // Apply category filters
+    let filteredData = pageData;
+    categoryColumns.forEach(column => {
+        if (categoryFilters[column]) {
+            filteredData = filteredData.filter(item => item[column] === categoryFilters[column]);
+        }
+    });
+    
+    const columns = Object.keys(pageData[0]);
+    const nameColumn = columns.find(col => 
+        col.toLowerCase().includes('name') || 
+        col.toLowerCase().includes('title')
+    ) || columns[1] || columns[0]; // Skip ID column if possible
+    
+    let html = '';
+    filteredData.forEach(item => {
+        const itemName = item[nameColumn] || 'Unnamed Item';
+        
+        html += `
+            <div class="modern-item-card ${currentItem && currentItem.id == item.id ? 'active' : ''}" onclick="selectItem(${item.id})">
+                <span class="item-name">${itemName}</span>
+            </div>
+        `;
+    });
+    
+    itemsGrid.innerHTML = html;
+    itemCount.textContent = `(${filteredData.length})`;
+}
+
+function getItemDescription(item) {
+    const columns = Object.keys(item);
+    const descColumns = columns.filter(col => 
+        col.toLowerCase().includes('desc') || 
+        col.toLowerCase().includes('detail') ||
+        col.toLowerCase().includes('note') ||
+        col.toLowerCase().includes('pricing') ||
+        col.toLowerCase().includes('commission')
+    );
+    
+    if (descColumns.length > 0) {
+        const desc = item[descColumns[0]];
+        if (desc && desc !== 'nan' && desc.toString().trim() !== '') {
+            const cleanDesc = desc.toString().trim();
+            return cleanDesc.length > 80 ? cleanDesc.substring(0, 80) + '...' : cleanDesc;
+        }
+    }
+    
+    // Fallback to other meaningful fields
+    const fallbackColumns = ['pricing', 'commission_%', 'category2', 'category3'];
+    for (const col of fallbackColumns) {
+        if (item[col] && item[col] !== 'nan' && item[col].toString().trim() !== '') {
+            const value = item[col].toString().trim();
+            return col.includes('commission') ? `Commission: ${value}%` : 
+                   col.includes('pricing') ? `Pricing: ${value}` : value;
+        }
+    }
+    
+    return '';
+}
+
+
+
+function selectCategory(category) {
+    // Update active category
+    document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    // Filter items by category
+    renderItems(category);
+}
+
+function selectItem(itemId) {
+    currentItem = pageData.find(item => item.id == itemId);
+    if (!currentItem) return;
+    
+    // Update active item
+    document.querySelectorAll('.item-card').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    renderEditForm();
+}
+
+function renderEditForm() {
+    if (!currentItem) return;
+    
+    const editForm = document.getElementById('editForm');
+    const columns = Object.keys(currentItem);
+    const excludeFields = ['id', 'created_at', 'updated_at', 'name', 'category1', 'category2', 'category3'];
+    
+    let html = '<form onsubmit="updateItem(event)" class="smart-edit-form">';
+    
+    // Group fields by type for better layout
+    const fieldGroups = groupFieldsByType(columns, excludeFields, currentItem);
+    
+    fieldGroups.forEach(group => {
+        group.fields.forEach(column => {
+            const value = currentItem[column] || '';
+            const fieldId = `field_${column}`;
+            const isUrl = value.toString().startsWith('http');
+            const fieldConfig = getFieldConfig(column, value);
+            
+            html += `
+                <div class="form-field-row">
+                    <div class="field-label-column">
+                        <label class="field-name-label">${column.replace(/_/g, ' ')}</label>
+                    </div>
+                    <div class="field-value-column">
+                        <div class="input-with-copy">
+                            ${fieldConfig.multiline ? 
+                                `<textarea id="${fieldId}" class="field-input" name="${column}" rows="${fieldConfig.rows}" placeholder="Enter ${column.replace(/_/g, ' ')}...">${value}</textarea>` :
+                                isUrl ? 
+                                    `<input type="url" id="${fieldId}" class="field-input" name="${column}" value="${value}" placeholder="Enter URL...">` :
+                                    `<input type="text" id="${fieldId}" class="field-input" name="${column}" value="${value}" placeholder="Enter ${column.replace(/_/g, ' ')}...">`
+                            }
+                            <button type="button" class="copy-btn" onclick="copyFieldValue('${fieldId}')" title="Copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        ${isUrl ? `<div class="mt-1"><a href="${value}" target="_blank" class="text-primary" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt me-1"></i>Open Link</a></div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+    });
+    
+    html += `
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="fas fa-save me-1"></i>Update
+            </button>
+            <button type="button" class="btn btn-success btn-sm" onclick="copyItem(${currentItem.id})">
+                <i class="fas fa-copy me-1"></i>Copy Item
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem()">
+                <i class="fas fa-trash me-1"></i>Delete
+            </button>
+        </div>
+    </form>`;
+    
+    editForm.innerHTML = html;
+}
+
+function groupFieldsByType(columns, excludeFields, item) {
+    const singleValueFields = [];
+    const textFields = [];
+    const allFields = columns.filter(col => !excludeFields.includes(col));
+    
+    allFields.forEach(column => {
+        const value = item[column] || '';
+        const fieldType = getFieldType(column, value);
+        
+        if (fieldType === 'text') {
+            textFields.push(column);
+        } else {
+            singleValueFields.push(column);
+        }
+    });
+    
+    const groups = [];
+    
+    if (singleValueFields.length > 0) {
+        groups.push({
+            type: 'single-values',
+            fields: singleValueFields
+        });
+    }
+    
+    if (textFields.length > 0) {
+        groups.push({
+            type: 'text-fields',
+            fields: textFields
+        });
+    }
+    
+    return groups;
+}
+
+function getFieldType(column, value) {
+    const textKeywords = ['description', 'summary', 'notes', 'comment', 'detail', 'pros_and_cons'];
+    const lowerColumn = column.toLowerCase();
+    
+    if (textKeywords.some(keyword => lowerColumn.includes(keyword))) {
+        return 'text';
+    }
+    
+    if (value && value.toString().length > 100) {
+        return 'text';
+    }
+    
+    return 'single';
+}
+
+function getFieldConfig(column, value) {
+    const lowerColumn = column.toLowerCase();
+    const valueLength = value ? value.toString().length : 0;
+    
+    // Determine if field needs multiline input
+    if (lowerColumn.includes('description') || lowerColumn.includes('summary') || 
+        lowerColumn.includes('notes') || lowerColumn.includes('pros_and_cons') || 
+        lowerColumn.includes('comment') || valueLength > 100) {
+        let rows = Math.max(2, Math.min(4, Math.ceil(valueLength / 100)));
+        if (lowerColumn.includes('description') || lowerColumn.includes('summary')) {
+            rows = Math.max(3, rows);
+        }
+        if (lowerColumn.includes('pros_and_cons')) {
+            rows = Math.max(3, rows);
+        }
+        return {
+            multiline: true,
+            rows: rows
+        };
+    }
+    
+    // All other fields are single line
+    return {
+        multiline: false,
+        rows: 1
+    };
+}
+
+// Sidebar toggle function
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    
+    sidebar.classList.toggle('collapsed');
+    
+    if (sidebar.classList.contains('collapsed')) {
+        mainContent.style.marginLeft = '60px';
+    } else {
+        mainContent.style.marginLeft = '240px';
+    }
+}
+
+function copyFieldValue(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field || !field.value) return;
+    
+    ZiqsyAdmin.utils.copyToClipboard(field.value)
+        .then(() => {
+            ZiqsyAdmin.notifications.success('Field copied to clipboard!');
+            // Highlight the field briefly
+            field.style.background = '#e8f5e8';
+            setTimeout(() => {
+                field.style.background = '';
+            }, 1000);
+        })
+        .catch(() => {
+            ZiqsyAdmin.notifications.error('Failed to copy field');
+        });
+}
+
+function updateItem(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const values = {};
+    for (const [key, value] of formData.entries()) {
+        values[key] = value;
+    }
+    
+    fetch(`/api/page/{{ page.id }}/data`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: 'update',
+            id: currentItem.id,
+            values: values
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            loadPageData(); // Reload data
+            alert('Item updated successfully!');
+        } else {
+            alert('Error updating item: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating item');
+    });
+}
+
+function deleteItem() {
+    if (!currentItem || !confirm('Are you sure you want to delete this item?')) return;
+    
+    fetch(`/api/page/{{ page.id }}/data`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: 'delete',
+            id: currentItem.id
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            loadPageData();
+            document.getElementById('editForm').innerHTML = '<p class="text-muted">Select an item to edit</p>';
+            ZiqsyAdmin.notifications.success('Item deleted successfully!');
+        } else {
+            ZiqsyAdmin.notifications.error('Error deleting item: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        ZiqsyAdmin.notifications.error('Error deleting item');
+    });
+}
+
+function copyItem(itemId) {
+    const item = pageData.find(i => i.id == itemId);
+    if (!item) return;
+    
+    const columns = Object.keys(item);
+    const excludeFields = ['id', 'created_at', 'updated_at'];
+    const copyData = {};
+    
+    columns.forEach(col => {
+        if (!excludeFields.includes(col) && item[col]) {
+            copyData[col] = item[col];
+        }
+    });
+    
+    const copyText = Object.entries(copyData)
+        .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${value}`)
+        .join('\n');
+    
+    ZiqsyAdmin.utils.copyToClipboard(copyText)
+        .then(() => {
+            ZiqsyAdmin.notifications.success('Item copied to clipboard!');
+        })
+        .catch(() => {
+            ZiqsyAdmin.notifications.error('Failed to copy item');
+        });
+}
+
+function copyAllData() {
+    if (pageData.length === 0) {
+        ZiqsyAdmin.notifications.error('No data to copy');
+        return;
+    }
+    
+    // Apply current filters
+    let filteredData = pageData;
+    categoryColumns.forEach(column => {
+        if (categoryFilters[column]) {
+            filteredData = filteredData.filter(item => item[column] === categoryFilters[column]);
+        }
+    });
+    
+    const columns = Object.keys(pageData[0]);
+    const excludeFields = ['id', 'created_at', 'updated_at'];
+    const dataColumns = columns.filter(col => !excludeFields.includes(col));
+    
+    // Create CSV format
+    const headers = dataColumns.map(col => col.replace(/_/g, ' ')).join('\t');
+    const rows = filteredData.map(item => 
+        dataColumns.map(col => item[col] || '').join('\t')
+    ).join('\n');
+    
+    const csvData = headers + '\n' + rows;
+    
+    ZiqsyAdmin.utils.copyToClipboard(csvData)
+        .then(() => {
+            ZiqsyAdmin.notifications.success(`Copied ${filteredData.length} items to clipboard!`);
+        })
+        .catch(() => {
+            ZiqsyAdmin.notifications.error('Failed to copy data');
+        });
+}
+
+// Theme management
+function changeTheme() {
+    const themeSelector = document.getElementById('themeSelector');
+    const selectedTheme = themeSelector.value;
+    document.body.setAttribute('data-theme', selectedTheme);
+    localStorage.setItem('selectedTheme', selectedTheme);
+}
+
+// Load saved theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedTheme = localStorage.getItem('selectedTheme') || 'dark';
+    document.body.setAttribute('data-theme', savedTheme);
+    const themeSelector = document.getElementById('themeSelector');
+    if (themeSelector) {
+        themeSelector.value = savedTheme;
+    }
+});
+
+// Sidebar toggle function
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+}
+</script>
+
+<!-- Create Section Modal -->
+<div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSectionModalLabel">Create New Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_section') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sectionName" class="form-label">Section Name</label>
+                        <input type="text" class="form-control" id="sectionName" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Section</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Page Modal -->
+<div class="modal fade" id="createPageModal" tabindex="-1" aria-labelledby="createPageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPageModalLabel">Create New Page</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_page') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="pageName" class="form-label">Page Name</label>
+                        <input type="text" class="form-control" id="pageName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageType" class="form-label">Page Type</label>
+                        <select class="form-select" id="pageType" name="page_type" required>
+                            <option value="">Select page type...</option>
+                            <option value="link_operations">Link Operations</option>
+                            <option value="list">List</option>
+                            <option value="dataset">Dataset</option>
+                            <option value="repository">Repository</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sectionId" class="form-label">Section</label>
+                        <select class="form-select" id="sectionId" name="section_id" required>
+                            <option value="">Select section...</option>
+                            {% for section in sections %}
+                            <option value="{{ section.id }}">{{ section.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

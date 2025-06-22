@@ -1,0 +1,15 @@
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+gunicorn==21.2.0
+PyMySQL==1.1.0
+mysqlclient==2.2.4
+pandas==2.1.4
+openpyxl==3.1.2
+xlrd==2.0.1
+email-validator==2.1.0
+Werkzeug==3.0.1
+SQLAlchemy==2.0.23
+markdown==3.7
+pdfkit==1.0.0
+
+

@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Ziqsy Internal{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/dashboard" class="ziqsy-logo-link">
+                <h3 class="ziqsy-logo">Z<span class="dna-i">i</span>qsy</h3>
+            </a>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+
+            
+            <!-- Categories section -->
+            <div class="categories-header mb-2">
+                <h6 class="mb-0 text-uppercase text-white" style="font-size: 0.75rem; letter-spacing: 0.5px;">Categories</h6>
+            </div>
+            
+            <div class="sidebar-actions">
+                <button class="btn btn-sm btn-outline-light mb-2 sidebar-btn" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+                    <i class="fas fa-plus"></i>
+                    <span>New Section</span>
+                </button>
+            </div>
+            
+            <div class="sections-list">
+                {% for section in sections %}
+                <div class="section-item">
+                    <div class="section-header">
+                        <h6 class="section-name">{{ section.name }}</h6>
+                        <div class="section-actions">
+                            <button class="btn btn-xs btn-outline-secondary sidebar-btn-mini" onclick="showCreatePageModal({{ section.id }})">
+                                <i class="fas fa-plus"></i>
+                                <span>Add</span>
+                            </button>
+                            <button class="btn btn-xs btn-outline-danger sidebar-btn-mini" onclick="deleteSection({{ section.id }})">
+                                <i class="fas fa-trash"></i>
+                                <span>Del</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="pages-list">
+                        {% for page in section.pages %}
+                        <div class="page-item">
+                            <a href="{{ url_for('view_page', page_id=page.id) }}" class="page-link sidebar-btn">
+                                <i class="fas fa-{{ 'link' if page.page_type == 'link_operations' else 'list' if page.page_type == 'list' else 'chart-bar' if page.page_type == 'dataset' else 'folder' }}"></i>
+                                <span>
+                                    {{ page.name }}
+                                    <small class="page-type">{{ page.page_type.replace('_', ' ').title() }}</small>
+                                </span>
+                            </a>
+                            <button class="btn btn-xs btn-outline-danger sidebar-btn-mini" onclick="deletePage({{ page.id }})">
+                                <i class="fas fa-trash"></i>
+                                <span>Del</span>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="theme-selector mb-3">
+                <label class="theme-label mb-2 d-block">Theme:</label>
+                <select class="theme-dropdown w-100" id="themeSelector" onchange="changeTheme()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="modern">Modern</option>
+                    <option value="oldschool">Old School</option>
+                    <option value="steel">Steel</option>
+                    <option value="gold">Gold</option>
+                </select>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light sidebar-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="hero-content">
+                <h1 class="hero-title">Welcome to Ziqsy Internal</h1>
+                <p class="hero-subtitle">Your unified admin system for managing operations, data, and workflows</p>
+                <div class="hero-image">
+                    <svg viewBox="0 0 600 300" class="hero-svg">
+                        <defs>
+                            <linearGradient id="heroGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--accent-color);stop-opacity:0.9" />
+                                <stop offset="50%" style="stop-color:var(--success-color);stop-opacity:0.7" />
+                                <stop offset="100%" style="stop-color:var(--info-color);stop-opacity:0.8" />
+                            </linearGradient>
+                            <linearGradient id="dataGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:var(--warning-color);stop-opacity:0.8" />
+                                <stop offset="100%" style="stop-color:var(--accent-color);stop-opacity:0.8" />
+                            </linearGradient>
+                            <filter id="heroGlow">
+                                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                <feMerge> 
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        
+                        <!-- Advanced network structure -->
+                        <g filter="url(#heroGlow)">
+                            <!-- Main data flow paths -->
+                            <path d="M50 150 Q150 120 250 150 T450 150 T550 150" stroke="url(#heroGradient)" stroke-width="4" fill="none" opacity="0.9"/>
+                            <path d="M50 180 Q150 210 250 180 T450 180 T550 180" stroke="url(#heroGradient)" stroke-width="4" fill="none" opacity="0.7"/>
+                            
+                            <!-- Branching paths -->
+                            <path d="M150 90 Q200 70 250 90 T350 90" stroke="url(#dataGradient)" stroke-width="3" fill="none" opacity="0.6"/>
+                            <path d="M150 240 Q200 260 250 240 T350 240" stroke="url(#dataGradient)" stroke-width="3" fill="none" opacity="0.6"/>
+                            
+                            <!-- Connection nodes -->
+                            <circle cx="150" cy="150" r="12" fill="var(--accent-color)" opacity="0.9"/>
+                            <circle cx="250" cy="165" r="10" fill="var(--success-color)" opacity="0.8"/>
+                            <circle cx="350" cy="150" r="11" fill="var(--warning-color)" opacity="0.8"/>
+                            <circle cx="450" cy="165" r="9" fill="var(--info-color)" opacity="0.8"/>
+                            
+                            <!-- Data processing units -->
+                            <rect x="130" y="80" width="40" height="20" rx="4" fill="var(--accent-color)" opacity="0.7"/>
+                            <rect x="230" y="230" width="40" height="20" rx="4" fill="var(--success-color)" opacity="0.7"/>
+                            <rect x="330" y="80" width="40" height="20" rx="4" fill="var(--warning-color)" opacity="0.7"/>
+                            
+                            <!-- Connecting lines -->
+                            <line x1="150" y1="90" x2="150" y2="138" stroke="var(--accent-color)" stroke-width="2" opacity="0.6"/>
+                            <line x1="250" y1="240" x2="250" y2="177" stroke="var(--success-color)" stroke-width="2" opacity="0.6"/>
+                            <line x1="350" y1="100" x2="350" y2="138" stroke="var(--warning-color)" stroke-width="2" opacity="0.6"/>
+                            
+                            <!-- Admin system text overlay -->
+                            <text x="300" y="50" text-anchor="middle" fill="var(--accent-color)" font-size="24" font-weight="600" opacity="0.4">ADMIN SYSTEM</text>
+                            <text x="300" y="280" text-anchor="middle" fill="var(--text-primary)" font-size="16" font-weight="500" opacity="0.5">Data • Operations • Workflow</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Stats and Sections Overview -->
+        <div class="dashboard-overview">
+            <div class="overview-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{{ sections|length }}</div>
+                        <div class="stat-label">Sections</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number">{% set total_pages = 0 %}{% for section in sections %}{% set total_pages = total_pages + section.pages|length %}{% endfor %}{{ total_pages }}</div>
+                        <div class="stat-label">Total Pages</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sections and Pages Display -->
+            {% if sections %}
+            <div class="sections-overview">
+                <h3 class="overview-title">Your Sections & Pages</h3>
+                <div class="sections-grid">
+                    {% for section in sections %}
+                    <div class="section-card">
+                        <div class="section-card-header">
+                            <h4 class="section-card-title">{{ section.name }}</h4>
+                            <span class="section-card-count">{{ section.pages|length }} pages</span>
+                        </div>
+                        <div class="section-card-body">
+                            {% if section.pages %}
+                                {% for page in section.pages %}
+                                <div class="page-card">
+                                    <div class="page-card-icon">
+                                        <i class="fas fa-{{ 'link' if page.page_type == 'link_operations' else 'list' if page.page_type == 'list' else 'chart-bar' if page.page_type == 'dataset' else 'folder' }}"></i>
+                                    </div>
+                                    <div class="page-card-content">
+                                        <a href="{{ url_for('view_page', page_id=page.id) }}" class="page-card-link">
+                                            <strong>{{ page.name }}</strong>
+                                            <span class="page-card-type">{{ page.page_type.replace('_', ' ').title() }}</span>
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="no-pages">No pages yet. Click the + button in the sidebar to add one.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="getting-started-centered">
+                <div class="getting-started">
+                    <h4>Welcome to Ziqsy</h4>
+                    <p style="font-size: 1.1rem; font-weight: 500;">1. Create a new Section to organize your pages</p>
+                    <p style="font-size: 1.1rem; font-weight: 500;">2. Add Pages with different types:</p>
+                    <ul style="margin-left: 1.5rem;">
+                        <li><strong>Link Operations:</strong> CSV upload with category navigation</li>
+                        <li><strong>List:</strong> Simple table management with inline editing</li>
+                        <li><strong>Dataset:</strong> Data analysis with basic charting</li>
+                        <li><strong>Repository:</strong> File management with descriptions</li>
+                    </ul>
+                    <p style="font-size: 1.1rem; font-weight: 500;">Upload CSV files to populate your pages with data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Section Modal -->
+<div class="modal fade" id="createSectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_section') }}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="sectionName" class="form-label">Section Name</label>
+                        <input type="text" class="form-control" id="sectionName" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Section</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Page Modal -->
+<div class="modal fade" id="createPageModal" tabindex="-1" aria-labelledby="createPageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPageModalLabel">Create New Page</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_page') }}">
+                <div class="modal-body">
+                    <input type="hidden" id="pageSectionId" name="section_id">
+                    <div class="mb-3">
+                        <label for="pageName" class="form-label">Page Name</label>
+                        <input type="text" class="form-control" id="pageName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageType" class="form-label">Page Type</label>
+                        <select class="form-select" id="pageType" name="page_type" required>
+                            <option value="">Select page type...</option>
+                            <option value="link_operations">Link Operations</option>
+                            <option value="list">List</option>
+                            <option value="dataset">Dataset</option>
+                            <option value="repository">Repository</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex !important; justify-content: flex-end !important; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showCreatePageModal(sectionId) {
+    document.getElementById('pageSectionId').value = sectionId;
+    new bootstrap.Modal(document.getElementById('createPageModal')).show();
+}
+
+function deleteSection(sectionId) {
+    if (confirm('Are you sure you want to delete this section and all its pages?')) {
+        window.location.href = `/delete_section/${sectionId}`;
+    }
+}
+
+function deletePage(pageId) {
+    if (confirm('Are you sure you want to delete this page?')) {
+        window.location.href = `/delete_page/${pageId}`;
+    }
+}
+
+// Mobile sidebar toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+    }
+});
+
+
+</script>
+{% endblock %}

@@ -1,0 +1,813 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.name }} - Repository{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/dashboard" class="ziqsy-logo-link">
+                <h3 class="ziqsy-logo">Z<span class="dna-i">i</span>qsy</h3>
+            </a>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+
+            
+            <!-- Categories section -->
+            <div class="categories-header mb-2">
+                <h6 class="mb-0 text-uppercase text-white" style="font-size: 0.75rem; letter-spacing: 0.5px;">Categories</h6>
+            </div>
+            
+            <div class="sidebar-actions mb-3">
+                <button class="btn btn-sm btn-outline-light mb-2 sidebar-btn" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+                    <i class="fas fa-plus"></i>
+                    <span>New Section</span>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary sidebar-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                    <i class="fas fa-folder"></i>
+                    <span>Add Page</span>
+                </button>
+            </div>
+            
+            <div class="sections-list">
+                {% for section in sections %}
+                <div class="section-item">
+                    <div class="section-header">
+                        <h6 class="section-name">{{ section.name }}</h6>
+                    </div>
+                    <div class="pages-list">
+                        {% for p in section.pages %}
+                        <div class="page-item {{ 'active' if p.id == page.id else '' }}">
+                            <a href="{{ url_for('view_page', page_id=p.id) }}" class="page-link sidebar-btn">
+                                <i class="fas fa-{{ 'link' if p.page_type == 'link_operations' else 'list' if p.page_type == 'list' else 'chart-bar' if p.page_type == 'dataset' else 'folder' }}"></i>
+                                <span>{{ p.name }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="theme-selector mb-3">
+                <label class="theme-label mb-2 d-block">Theme:</label>
+                <select class="theme-dropdown w-100" id="themeSelector" onchange="changeTheme()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="modern">Modern</option>
+                    <option value="oldschool">Old School</option>
+                    <option value="steel">Steel</option>
+                    <option value="gold">Gold</option>
+                </select>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light sidebar-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="content-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <h2 class="mb-0">{{ page.name }}</h2>
+                    <span class="badge bg-warning">Repository</span>
+                    {% if cloud_folder %}
+                    <span class="badge bg-success">
+                        <i class="fas fa-cloud me-1"></i>{{ cloud_folder.folder_name }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="folder-path-form">
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#selectFolderModal">
+                        <i class="fas fa-folder me-1"></i>Select Folder
+                    </button>
+                    {% if cloud_folder %}
+                    <button class="btn btn-outline-secondary btn-sm ms-2" onclick="refreshRepository()">
+                        <i class="fas fa-sync me-1"></i>Refresh
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="repository-layout">
+            <!-- File Tree -->
+            <div class="file-tree-panel">
+                <div class="tree-header">
+                    <h5>Folder Structure</h5>
+                    {% if cloud_folder %}
+                    <small class="text-muted">{{ cloud_folder.folder_path }}</small>
+                    {% endif %}
+                </div>
+                <div class="search-box mb-3">
+                    <input type="text" id="fileSearch" class="form-control form-control-sm" placeholder="Search files and folders...">
+                </div>
+                <div id="fileTree" class="file-tree">
+                    {% if cloud_folder %}
+                        <div class="tree-loading text-center py-3">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <div>Loading folder structure...</div>
+                            <small class="text-muted d-block mt-2">Scanning: {{ cloud_folder.folder_path }}</small>
+                        </div>
+                    {% else %}
+                        <div class="no-folder-selected text-center py-4">
+                            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Select a folder to view its contents</p>
+                            <p><small class="text-muted">You can browse local folders or network paths</small></p>
+                            <button class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#selectFolderModal">
+                                <i class="fas fa-folder me-1"></i>Select Folder
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- File Details -->
+            <div class="file-details-panel">
+                <h5>File Details</h5>
+                <div id="fileDetails" class="file-details">
+                    <div class="no-selection text-center py-4">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">Click a File or Folder</h6>
+                        <p class="text-muted mb-3">Select any item from the tree to see:</p>
+                        <div class="text-start">
+                            <small class="text-muted">
+                                <i class="fas fa-link text-primary me-2"></i>Direct link to open the file<br>
+                                <i class="fas fa-robot text-success me-2"></i>AI-generated description<br>
+                                <i class="fas fa-sticky-note text-warning me-2"></i>Your personal notes and annotations
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Select Cloud Folder Modal -->
+<div class="modal fade" id="selectFolderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Folder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('set_cloud_folder', page_id=page.id) }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="folder_path" class="form-label">Folder Path</label>
+                        <input type="text" class="form-control" id="folder_path" name="folder_path" 
+                               placeholder="e.g., /home/user/documents or C:\Users\Name\Documents" 
+                               value="{{ cloud_folder.folder_path if cloud_folder else '' }}" required>
+                        <small class="form-text text-muted">Enter the full path to your folder (local or network path)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="folder_name" class="form-label">Display Name</label>
+                        <input type="text" class="form-control" id="folder_name" name="folder_name" 
+                               placeholder="Project Main Folder"
+                               value="{{ cloud_folder.folder_name if cloud_folder else '' }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Set Folder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    let selectedFile = null;
+
+    // Load file tree when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Page loaded, cloud folder exists: {{ "true" if cloud_folder else "false" }}');
+        {% if cloud_folder %}
+        console.log('Loading file tree for page {{ page.id }}');
+        setTimeout(() => {
+            loadFileTree();
+        }, 100);
+        {% else %}
+        console.log('No cloud folder set');
+        {% endif %}
+    });
+
+    function loadFileTree() {
+        console.log('loadFileTree called');
+        const fileTree = document.getElementById('fileTree');
+        fileTree.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i><div>Loading...</div></div>';
+        
+        fetch(`/api/repository/{{ page.id }}/files`, {
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.error) {
+                    let errorHtml = `<div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Folder Access Issue</h6>
+                        <p>${data.error}</p>`;
+                    
+                    if (data.message) {
+                        errorHtml += `<p><small>${data.message}</small></p>`;
+                    }
+                    
+                    errorHtml += `<button class="btn btn-sm btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#selectFolderModal">
+                        <i class="fas fa-folder me-1"></i>Update Folder Path
+                    </button></div>`;
+                    
+                    fileTree.innerHTML = errorHtml;
+                    return;
+                }
+                if (data.files && data.files.length > 0) {
+                    renderFileTree(data.files, fileTree);
+                } else {
+                    fileTree.innerHTML = `<div class="text-center py-4">
+                        <i class="fas fa-folder-open fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">This folder appears to be empty</p>
+                        <small class="text-muted">If you expect files here, check the folder path or permissions</small>
+                    </div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading files:', error);
+                fileTree.innerHTML = `<div class="alert alert-danger">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Error Loading Files</h6>
+                    <p>${error.message}</p>
+                    <small>Check browser console for more details</small>
+                </div>`;
+            });
+    }
+
+    function renderFileTree(files, container) {
+        container.innerHTML = '';
+        
+        if (files.length === 0) {
+            container.innerHTML = '<div class="text-muted">No files found in this folder</div>';
+            return;
+        }
+        
+        // Create a welcome message
+        const welcomeDiv = document.createElement('div');
+        welcomeDiv.className = 'tree-welcome mb-3 p-2 bg-info bg-opacity-10 rounded';
+        welcomeDiv.innerHTML = `
+            <small class="text-info">
+                <i class="fas fa-info-circle me-1"></i>
+                Click any file or folder below to view details, AI descriptions, and add your notes
+            </small>
+        `;
+        container.appendChild(welcomeDiv);
+        
+        files.forEach(file => {
+            const item = document.createElement('div');
+            item.className = `file-tree-item ${file.is_folder ? 'folder' : 'file'}`;
+            item.onclick = () => selectFile(file);
+            
+            const icon = file.is_folder ? 'fa-folder text-warning' : getFileIcon(file.name);
+            
+            item.innerHTML = `
+                <i class="fas ${icon} file-icon"></i>
+                <span class="file-name">${file.name}</span>
+                ${file.size ? `<span class="file-size">${formatFileSize(file.size)}</span>` : ''}
+            `;
+            
+            container.appendChild(item);
+        });
+    }
+
+    function selectFile(file) {
+        selectedFile = file;
+        
+        // Update selection visual
+        document.querySelectorAll('.file-tree-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        event.target.closest('.file-tree-item').classList.add('selected');
+        
+        // Load file details
+        loadFileDetails(file);
+    }
+
+    function loadFileDetails(file) {
+        const detailsContainer = document.getElementById('fileDetails');
+        
+        detailsContainer.innerHTML = `
+            <div class="file-detail-header mb-3">
+                <h5 class="mb-1">
+                    <i class="fas ${file.is_folder ? 'fa-folder text-warning' : getFileIcon(file.name)} me-2"></i>
+                    ${file.name}
+                </h5>
+                <span class="badge ${file.is_folder ? 'bg-warning text-dark' : 'bg-info'}">
+                    ${file.is_folder ? 'Folder' : 'File'}
+                </span>
+            </div>
+            
+            <div class="file-detail-section">
+                <h6><i class="fas fa-info-circle me-2 text-primary"></i>Information</h6>
+                <p><strong>Location:</strong> ${file.path}</p>
+                ${file.size ? `<p><strong>Size:</strong> ${formatFileSize(file.size)}</p>` : ''}
+            </div>
+            
+            <div class="file-detail-section">
+                <h6><i class="fas fa-external-link-alt me-2 text-primary"></i>Quick Access</h6>
+                <div class="file-link-container">
+                    <a href="${file.url || file.path}" class="btn btn-outline-primary btn-sm" target="_blank">
+                        <i class="fas fa-external-link-alt me-1"></i>
+                        Open ${file.is_folder ? 'Folder' : 'File'}
+                    </a>
+                </div>
+            </div>
+            
+            <div class="file-detail-section">
+                <h6><i class="fas fa-robot me-2 text-success"></i>AI Description</h6>
+                <div class="ai-description">
+                    <div id="aiDescriptionContent">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            Generating intelligent description...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="file-detail-section">
+                <h6><i class="fas fa-sticky-note me-2 text-warning"></i>Your Notes</h6>
+                <textarea id="userNotes" class="user-notes-editor" 
+                          placeholder="Add your personal notes about this ${file.is_folder ? 'folder' : 'file'}...
+What does it contain? How is it used? Any important details to remember?">${file.user_notes || ''}</textarea>
+                <button class="btn btn-sm btn-primary mt-2" onclick="saveUserNotes()">
+                    <i class="fas fa-save me-1"></i>Save Notes
+                </button>
+            </div>
+        `;
+        
+        // Load AI description
+        generateAIDescription(file);
+    }
+
+    function generateAIDescription(file) {
+        fetch(`/api/repository/file/ai-description`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file_path: file.path,
+                file_name: file.name,
+                is_folder: file.is_folder
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('aiDescriptionContent').textContent = 
+                data.description || 'Unable to generate description';
+        })
+        .catch(error => {
+            document.getElementById('aiDescriptionContent').textContent = 
+                'Error generating description';
+        });
+    }
+
+    function saveUserNotes() {
+        if (!selectedFile) return;
+        
+        const notes = document.getElementById('userNotes').value;
+        
+        fetch(`/api/repository/file/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                page_id: {{ page.id }},
+                file_path: selectedFile.path,
+                file_name: selectedFile.name,
+                user_notes: notes,
+                is_folder: selectedFile.is_folder
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Notes saved successfully', 'success');
+            } else {
+                showNotification('Error saving notes', 'error');
+            }
+        });
+    }
+
+    function refreshRepository() {
+        loadFileTree();
+    }
+
+    function getFileIcon(fileName) {
+        const ext = fileName.split('.').pop().toLowerCase();
+        const iconMap = {
+            'pdf': 'fa-file-pdf text-danger',
+            'doc': 'fa-file-word text-primary', 'docx': 'fa-file-word text-primary',
+            'xls': 'fa-file-excel text-success', 'xlsx': 'fa-file-excel text-success',
+            'ppt': 'fa-file-powerpoint text-warning', 'pptx': 'fa-file-powerpoint text-warning',
+            'txt': 'fa-file-alt text-secondary',
+            'md': 'fa-file-alt text-info',
+            'jpg': 'fa-file-image text-info', 'jpeg': 'fa-file-image text-info', 'png': 'fa-file-image text-info', 'gif': 'fa-file-image text-info',
+            'zip': 'fa-file-archive text-warning', 'rar': 'fa-file-archive text-warning', '7z': 'fa-file-archive text-warning',
+            'mp4': 'fa-file-video text-purple', 'avi': 'fa-file-video text-purple', 'mov': 'fa-file-video text-purple',
+            'mp3': 'fa-file-audio text-success', 'wav': 'fa-file-audio text-success',
+            'js': 'fa-file-code text-warning', 'html': 'fa-file-code text-danger', 'css': 'fa-file-code text-primary', 'py': 'fa-file-code text-success'
+        };
+        return iconMap[ext] || 'fa-file text-muted';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showNotification(message, type) {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.main-content').prepend(alert);
+        setTimeout(() => alert.remove(), 5000);
+    }
+</script>
+{% endblock %}
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit File Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editFileForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editFileId">
+                    
+                    <div class="form-group mb-3">
+                        <label for="editFileUrl" class="form-label">File URL</label>
+                        <input type="url" class="form-control" id="editFileUrl">
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="editFileDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editFileDescription" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="editFileTags" class="form-label">Tags (comma-separated)</label>
+                        <input type="text" class="form-control" id="editFileTags">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" onclick="deleteFile()">Delete File</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Repository page variables
+let repoFiles = [];
+let currentSelectedFile = null;
+
+// Load files when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Repository page loaded, initializing...');
+    loadRepositoryFiles();
+    
+    // Search functionality
+    document.getElementById('fileSearch').addEventListener('input', function() {
+        filterFiles(this.value);
+    });
+    
+    // Form submissions
+    document.getElementById('addFileForm').addEventListener('submit', addFile);
+    document.getElementById('editFileForm').addEventListener('submit', editFile);
+});
+
+function loadRepositoryFiles() {
+    console.log('loadRepositoryFiles called');
+    fetch(`/api/repository/{{ page.id }}/files`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('API Response:', data);
+            if (data.error) {
+                console.error('API Error:', data.error);
+                document.getElementById('fileTree').innerHTML = `<div class="alert alert-warning">${data.error}</div>`;
+                return;
+            }
+            repoFiles = data.files || [];
+            console.log('Files loaded:', repoFiles.length);
+            renderFileTree();
+        })
+        .catch(error => {
+            console.error('Error loading files:', error);
+            document.getElementById('fileTree').innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        });
+}
+
+function renderFileTree() {
+    const fileTree = document.getElementById('fileTree');
+    
+    if (repositoryFiles.length === 0) {
+        fileTree.innerHTML = '<p class="text-muted">No files in repository. Click "Add File" to get started.</p>';
+        return;
+    }
+    
+    // Group files by directory
+    const fileStructure = {};
+    
+    repoFiles.forEach(file => {
+        const pathParts = file.file_path.split('/').filter(part => part);
+        let current = fileStructure;
+        
+        // Build directory structure
+        for (let i = 0; i < pathParts.length - 1; i++) {
+            const dir = pathParts[i];
+            if (!current[dir]) {
+                current[dir] = { type: 'directory', children: {}, files: [] };
+            }
+            current = current[dir].children;
+        }
+        
+        // Add file to appropriate directory
+        const fileName = pathParts[pathParts.length - 1] || file.file_name;
+        const parentDir = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
+        
+        if (parentDir && fileStructure[parentDir]) {
+            fileStructure[parentDir].files.push(file);
+        } else {
+            // Root level file
+            if (!fileStructure['_root']) {
+                fileStructure['_root'] = { type: 'directory', children: {}, files: [] };
+            }
+            fileStructure['_root'].files.push(file);
+        }
+    });
+    
+    fileTree.innerHTML = renderFileStructure(fileStructure);
+}
+
+function renderFileStructure(structure, level = 0) {
+    let html = '';
+    
+    for (const [name, data] of Object.entries(structure)) {
+        if (name === '_root') {
+            // Render root files
+            data.files.forEach(file => {
+                html += renderFileItem(file, level);
+            });
+        } else if (data.type === 'directory') {
+            html += `
+                <div class="directory-item" style="margin-left: ${level * 20}px">
+                    <div class="directory-header" onclick="toggleDirectory(this)">
+                        <i class="fas fa-folder me-2"></i>
+                        <span>${name}</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="directory-content">
+                        ${renderFileStructure(data.children, level + 1)}
+                        ${data.files.map(file => renderFileItem(file, level + 1)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    return html;
+}
+
+function renderFileItem(file, level) {
+    const fileIcon = getFileIcon(file.file_name);
+    const tags = file.tags ? file.tags.split(',').map(tag => `<span class="file-tag">${tag.trim()}</span>`).join('') : '';
+    
+    return `
+        <div class="file-item" style="margin-left: ${level * 20}px" onclick="selectFile(${file.id})">
+            <div class="file-info">
+                <i class="fas fa-${fileIcon} me-2"></i>
+                <span class="file-name">${file.file_name}</span>
+                ${file.file_url ? '<i class="fas fa-external-link-alt ms-1 text-primary"></i>' : ''}
+            </div>
+            <div class="file-meta">
+                ${tags}
+                <small class="text-muted">${new Date(file.created_at).toLocaleDateString()}</small>
+            </div>
+        </div>
+    `;
+}
+
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const iconMap = {
+        'pdf': 'file-pdf',
+        'doc': 'file-word', 'docx': 'file-word',
+        'xls': 'file-excel', 'xlsx': 'file-excel',
+        'ppt': 'file-powerpoint', 'pptx': 'file-powerpoint',
+        'txt': 'file-alt',
+        'jpg': 'file-image', 'jpeg': 'file-image', 'png': 'file-image', 'gif': 'file-image',
+        'mp4': 'file-video', 'avi': 'file-video', 'mov': 'file-video',
+        'zip': 'file-archive', 'rar': 'file-archive',
+        'js': 'file-code', 'html': 'file-code', 'css': 'file-code', 'py': 'file-code'
+    };
+    
+    return iconMap[ext] || 'file';
+}
+
+function selectFile(fileId) {
+    currentFileId = fileId;
+    const file = repositoryFiles.find(f => f.id === fileId);
+    
+    if (!file) return;
+    
+    // Update active file
+    document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    // Show file details
+    const fileDetails = document.getElementById('fileDetails');
+    const tags = file.tags ? file.tags.split(',').map(tag => `<span class="badge bg-secondary me-1">${tag.trim()}</span>`).join('') : 'No tags';
+    
+    fileDetails.innerHTML = `
+        <div class="file-detail-card">
+            <div class="file-header">
+                <h6>${file.file_name}</h6>
+                <div class="file-actions">
+                    ${file.file_url ? `<a href="${file.file_url}" target="_blank" class="btn btn-sm btn-outline-primary">Open File</a>` : ''}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editFileModal(${file.id})">Edit</button>
+                </div>
+            </div>
+            
+            <div class="file-properties">
+                <p><strong>Path:</strong> ${file.file_path}</p>
+                <p><strong>Description:</strong> ${file.description || 'No description provided'}</p>
+                <p><strong>Tags:</strong> ${tags}</p>
+                <p><strong>Added:</strong> ${new Date(file.created_at).toLocaleString()}</p>
+                ${file.file_url ? `<p><strong>URL:</strong> <a href="${file.file_url}" target="_blank">${file.file_url}</a></p>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function toggleDirectory(element) {
+    const content = element.nextElementSibling;
+    const icon = element.querySelector('.toggle-icon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(0deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(-90deg)';
+    }
+}
+
+function filterFiles(searchTerm) {
+    const fileItems = document.querySelectorAll('.file-item');
+    
+    fileItems.forEach(item => {
+        const fileName = item.querySelector('.file-name').textContent.toLowerCase();
+        const fileDescription = item.querySelector('.file-meta').textContent.toLowerCase();
+        
+        if (fileName.includes(searchTerm.toLowerCase()) || fileDescription.includes(searchTerm.toLowerCase())) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function addFile(event) {
+    event.preventDefault();
+    
+    const formData = {
+        file_name: document.getElementById('fileName').value,
+        file_path: document.getElementById('filePath').value,
+        file_url: document.getElementById('fileUrl').value,
+        description: document.getElementById('fileDescription').value,
+        tags: document.getElementById('fileTags').value
+    };
+    
+    fetch(`/api/repository/{{ page.id }}/files`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addFileModal')).hide();
+            document.getElementById('addFileForm').reset();
+            loadRepositoryFiles();
+            alert('File added successfully!');
+        } else {
+            alert('Error adding file: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding file');
+    });
+}
+
+function editFileModal(fileId) {
+    const file = repositoryFiles.find(f => f.id === fileId);
+    if (!file) return;
+    
+    document.getElementById('editFileId').value = file.id;
+    document.getElementById('editFileUrl').value = file.file_url || '';
+    document.getElementById('editFileDescription').value = file.description || '';
+    document.getElementById('editFileTags').value = file.tags || '';
+    
+    new bootstrap.Modal(document.getElementById('editFileModal')).show();
+}
+
+function editFile(event) {
+    event.preventDefault();
+    
+    const fileId = document.getElementById('editFileId').value;
+    const formData = {
+        file_url: document.getElementById('editFileUrl').value,
+        description: document.getElementById('editFileDescription').value,
+        tags: document.getElementById('editFileTags').value
+    };
+    
+    fetch(`/api/repository/file/${fileId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editFileModal')).hide();
+            loadRepositoryFiles();
+            alert('File updated successfully!');
+        } else {
+            alert('Error updating file: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating file');
+    });
+}
+
+function deleteFile() {
+    const fileId = document.getElementById('editFileId').value;
+    
+    if (!confirm('Are you sure you want to delete this file?')) return;
+    
+    fetch(`/api/repository/file/${fileId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editFileModal')).hide();
+            loadRepositoryFiles();
+            document.getElementById('fileDetails').innerHTML = '<p class="text-muted">Select a file to view details</p>';
+            alert('File deleted successfully!');
+        } else {
+            alert('Error deleting file: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting file');
+    });
+}
+
+function refreshRepository() {
+    loadRepositoryFiles();
+    alert('Repository refreshed!');
+}
+</script>
+{% endblock %}

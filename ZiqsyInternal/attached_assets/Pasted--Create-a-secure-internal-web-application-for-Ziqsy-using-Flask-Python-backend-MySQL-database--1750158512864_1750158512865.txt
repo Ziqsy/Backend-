@@ -1,0 +1,114 @@
+📌 Create a secure internal web application for Ziqsy using Flask (Python backend), MySQL (database), and vanilla JavaScript (frontend). The purpose is to unify multiple operational workflows, tools, and repositories into a single admin system hosted at `ziqsy.com/internal`.
+
+---
+
+## 🧱 TECH STACK
+
+- Backend: Flask (Python 3.x)
+- Frontend: HTML + CSS (minimalist) + Vanilla JavaScript
+- Database: MySQL (no SQLite)
+- Auth: Simple login screen (email/password hardcoded for now)
+- Deployment: Structure compatible for Hostinger (PHP/CGI-like)
+
+---
+
+## 🔐 AUTHENTICATION
+
+- Start with a login page. Only authenticated internal users can access.
+- Keep it simple (e.g., email & password hardcoded or from DB).
+
+---
+
+## 🧭 NAVIGATION STRUCTURE
+
+- **Left Sidebar**: Section > Pages (Taxonomy)
+- Admins can create:
+  - New Sections (e.g., Marketing, Legal, Product)
+  - Pages within a Section
+- Every Page is **typed** into one of 4 types (see below).
+- UI: Responsive layout with compact spacing; use neutral tones (beige, mauve), minimalist fonts, and subtle contrast when selected.
+
+---
+
+## 📄 PAGE TYPES
+
+### Type 1: **Link Operations Page**
+- Purpose: Allow staff to perform repetitive tasks like affiliate sign-ups.
+- Upload CSV to define table (supports fields: Category 1...N, Name, others).
+- Auto-create DB table with same columns (all as text).
+- Left = Category navigation (multi-level).
+- Middle = Cards (Name field at leaf level).
+- Right = CRUD Form (45% width) for editing fields.
+- User can:
+  - Upload new CSV → Adds new fields if needed
+  - Export current view
+  - Delete rows
+
+---
+
+### Type 2: **List Page**
+- Upload CSV → Creates table.
+- Future CSVs append new fields if needed.
+- Table shown inline with inline editing allowed.
+- Last column = Tick/Status to confirm record is final.
+- CRUD + Export enabled.
+
+---
+
+### Type 3: **Dataset Page**
+- Upload CSV, JSON, or MD.
+- Show datasets clearly with:
+  - Table view
+  - LLM Chat assistant on page (basic integration for research)
+  - Graphing module to plot selected fields
+  - Ability to review, clean, and modify dataset
+  - Export cleaned version
+- AI tools to:
+  - Clean duplicates
+  - Normalize values
+  - Describe the dataset
+  - Convert structure to flowchart
+
+---
+
+### Type 4: **Repository Page**
+- On creation, ask user to **select a folder** (in Google Drive/OneDrive).
+- Show folder contents as tree.
+- Files clickable → open link
+- Each file has:
+  - Auto-generated AI description
+  - Link to view
+  - Manual comment/edit field
+
+---
+
+## 📁 OTHER REQUIREMENTS
+
+- Minimalist UI with narrow margins, compact layout
+- Cards and form panels fit within 100% width of browser
+- Form = 45% of screen after nav bar
+- Avoid vertical scroll where possible
+- Allow CSV-based DB table creation and dynamic model binding
+
+---
+
+## 🧪 TEST DATA
+
+- Include 1 example per page type (CSV or dummy data)
+- For datasets: Include dummy data with clear ranges and ability to test a simple prediction
+- Add example for POS calculation using a Bayesian-style logic (e.g., supplement → BM → improvement)
+
+---
+
+## ✅ OUTPUT
+
+- Fully working Flask app
+- All views and routes implemented
+- Pages and database created dynamically via user input
+- Hosted preview viewable locally
+- Include exportable zip with:
+  - `main.py`
+  - HTML templates
+  - CSS
+  - SQL init script
+  - README.md with setup instructions

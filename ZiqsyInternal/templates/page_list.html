@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.name }} - List{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/dashboard" class="ziqsy-logo-link">
+                <h3 class="ziqsy-logo">Z<span class="dna-i">i</span>qsy</h3>
+            </a>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+
+            
+            <!-- Categories section -->
+            <div class="categories-header mb-2">
+                <h6 class="mb-0 text-uppercase text-white" style="font-size: 0.75rem; letter-spacing: 0.5px;">Categories</h6>
+            </div>
+            
+            <div class="sidebar-actions mb-3">
+                <button class="btn btn-sm btn-outline-light mb-2 sidebar-btn" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+                    <i class="fas fa-plus"></i>
+                    <span>New Section</span>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary sidebar-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                    <i class="fas fa-folder"></i>
+                    <span>Add Page</span>
+                </button>
+            </div>
+            
+            <div class="sections-list">
+                {% for section in sections %}
+                <div class="section-item">
+                    <div class="section-header">
+                        <h6 class="section-name">{{ section.name }}</h6>
+                    </div>
+                    <div class="pages-list">
+                        {% for p in section.pages %}
+                        <div class="page-item {{ 'active' if p.id == page.id else '' }}">
+                            <a href="{{ url_for('view_page', page_id=p.id) }}" class="page-link sidebar-btn">
+                                <i class="fas fa-{{ 'link' if p.page_type == 'link_operations' else 'list' if p.page_type == 'list' else 'chart-bar' if p.page_type == 'dataset' else 'folder' }}"></i>
+                                <span>{{ p.name }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="theme-selector mb-3">
+                <label class="theme-label mb-2 d-block">Theme:</label>
+                <select class="theme-dropdown w-100" id="themeSelector" onchange="changeTheme()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="modern">Modern</option>
+                    <option value="oldschool">Old School</option>
+                    <option value="steel">Steel</option>
+                    <option value="gold">Gold</option>
+                </select>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light sidebar-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="content-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <h2 class="mb-0">{{ page.name }}</h2>
+                    <span class="badge bg-success">List</span>
+                    {% if page.table_name %}
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('export_page_data', page_id=page.id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-download me-1"></i>Export Data
+                        </a>
+                        <button class="btn btn-outline-primary btn-sm" onclick="addNewRow()">
+                            <i class="fas fa-plus me-1"></i>Add Row
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="upload-form">
+                    <form method="POST" action="{{ url_for('upload_file', page_id=page.id) }}" enctype="multipart/form-data" class="compact-form d-flex align-items-center gap-2">
+                        <input type="file" name="file" accept=".csv,.xlsx,.xls" required class="form-control form-control-sm" style="width: 200px;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-upload me-1"></i>Upload
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="list-content">
+            <div id="dataTable" class="data-table">
+                <!-- Table will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let pageData = [];
+let columns = [];
+
+// Load data when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadPageData();
+});
+
+function loadPageData() {
+    fetch(`/api/page/{{ page.id }}/data`)
+        .then(response => response.json())
+        .then(data => {
+            pageData = data;
+            if (data.length > 0) {
+                columns = Object.keys(data[0]);
+            }
+            renderTable();
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
+        });
+}
+
+function renderTable() {
+    const dataTable = document.getElementById('dataTable');
+    
+    if (pageData.length === 0) {
+        dataTable.innerHTML = '<p class="text-muted">No data available. Upload a CSV file to get started.</p>';
+        return;
+    }
+    
+    const excludeFields = ['created_at', 'updated_at'];
+    const displayColumns = columns.filter(col => !excludeFields.includes(col));
+    
+    let html = '<div class="table-responsive"><table class="table table-striped table-hover">';
+    
+    // Header
+    html += '<thead><tr>';
+    displayColumns.forEach(column => {
+        html += `<th>${column.replace(/_/g, ' ').toUpperCase()}</th>`;
+    });
+    html += '<th>Status</th><th>Actions</th></tr></thead>';
+    
+    // Body
+    html += '<tbody>';
+    pageData.forEach(item => {
+        html += '<tr>';
+        displayColumns.forEach(column => {
+            const value = item[column] || '';
+            if (column === 'id') {
+                html += `<td>${value}</td>`;
+            } else {
+                html += `<td><input type="text" class="form-control form-control-sm" value="${value}" onchange="updateCell(${item.id}, '${column}', this.value)"></td>`;
+            }
+        });
+        
+        // Status column
+        const isCompleted = item.status === 'completed';
+        html += `
+            <td>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" ${isCompleted ? 'checked' : ''} 
+                           onchange="updateStatus(${item.id}, this.checked)">
+                    <label class="form-check-label">Complete</label>
+                </div>
+            </td>
+        `;
+        
+        // Actions column
+        html += `
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteRow(${item.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    
+    dataTable.innerHTML = html;
+}
+
+function updateCell(itemId, column, value) {
+    const values = {};
+    values[column] = value;
+    
+    fetch(`/api/page/{{ page.id }}/data`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: 'update',
+            id: itemId,
+            values: values
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) {
+            alert('Error updating cell: ' + result.message);
+            loadPageData(); // Reload to reset
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating cell');
+        loadPageData();
+    });
+}
+
+function updateStatus(itemId, isCompleted) {
+    const values = {
+        status: isCompleted ? 'completed' : 'pending'
+    };
+    
+    fetch(`/api/page/{{ page.id }}/data`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: 'update',
+            id: itemId,
+            values: values
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) {
+            alert('Error updating status: ' + result.message);
+            loadPageData();
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating status');
+        loadPageData();
+    });
+}
+
+function deleteRow(itemId) {
+    if (!confirm('Are you sure you want to delete this row?')) return;
+    
+    fetch(`/api/page/{{ page.id }}/data`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action: 'delete',
+            id: itemId
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            loadPageData();
+            alert('Row deleted successfully!');
+        } else {
+            alert('Error deleting row: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting row');
+    });
+}
+
+function addNewRow() {
+    // Create a new row with empty values
+    const newRowData = {};
+    columns.forEach(column => {
+        if (!['id', 'created_at', 'updated_at'].includes(column)) {
+            newRowData[column] = '';
+        }
+    });
+    
+    // Add status column
+    newRowData.status = 'pending';
+    
+    // This would need a separate API endpoint to add new rows
+    // For now, show a simple prompt
+    alert('To add new rows, please upload a CSV file with additional data.');
+}
+</script>
+
+<!-- Create Section Modal -->
+<div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSectionModalLabel">Create New Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_section') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sectionName" class="form-label">Section Name</label>
+                        <input type="text" class="form-control" id="sectionName" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Section</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Page Modal -->
+<div class="modal fade" id="createPageModal" tabindex="-1" aria-labelledby="createPageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPageModalLabel">Create New Page</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_page') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="pageName" class="form-label">Page Name</label>
+                        <input type="text" class="form-control" id="pageName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageType" class="form-label">Page Type</label>
+                        <select class="form-select" id="pageType" name="page_type" required>
+                            <option value="">Select page type...</option>
+                            <option value="link_operations">Link Operations</option>
+                            <option value="list">List</option>
+                            <option value="dataset">Dataset</option>
+                            <option value="repository">Repository</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sectionId" class="form-label">Section</label>
+                        <select class="form-select" id="sectionId" name="section_id" required>
+                            <option value="">Select section...</option>
+                            {% for section in sections %}
+                            <option value="{{ section.id }}">{{ section.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

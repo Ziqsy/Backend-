@@ -1,0 +1,47 @@
+Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this error
+framework-59ae991d12a994a9.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-59ae991d12a994a9.js:1
+(anonymous) @ framework-59ae991d12a994a9.js:1
+uD @ framework-59ae991d12a994a9.js:1
+uI @ framework-59ae991d12a994a9.js:1
+uM @ framework-59ae991d12a994a9.js:1
+uS @ framework-59ae991d12a994a9.js:1
+C @ framework-59ae991d12a994a9.js:1
+z @ framework-59ae991d12a994a9.js:1Understand this error
+a0dacbb4-602a-4a48-9d3a-bc79e93f4efb-00-3qpg45wdhnods.kirk.replit.dev/__replco/workspace_iframe.html?initialPath=%2F&id=%3Ar2e%3A:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+completion_list.html:12 
+            
+            
+           GET chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/utils.js net::ERR_FILE_NOT_FOUNDUnderstand this error
+chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/utils.js:1 
+            
+            
+           Failed to load resource: net::ERR_FILE_NOT_FOUNDUnderstand this error
+completion_list.html:13 
+            
+            
+           GET chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/extensionState.js net::ERR_FILE_NOT_FOUNDUnderstand this error
+chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/extensionState.js:1 
+            
+            
+           Failed to load resource: net::ERR_FILE_NOT_FOUNDUnderstand this error
+completion_list.html:14 
+            
+            
+           GET chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/heuristicsRedefinitions.js net::ERR_FILE_NOT_FOUNDUnderstand this error
+chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/heuristicsRedefinitions.js:1 
+            
+            
+           Failed to load resource: net::ERR_FILE_NOT_FOUNDUnderstand this error
+completion_list.html:12 
+            
+            
+           GET chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/utils.js net::ERR_FILE_NOT_FOUNDUnderstand this error
+completion_list.html:13 
+            
+            
+           GET chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/extensionState.js net::ERR_FILE_NOT_FOUNDUnderstand this error
+completion_list.html:14 
+            
+            
+           GET chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/heuristicsRedefinitions.js net::ERR_FILE_NOT_FOUNDUnderstand this error

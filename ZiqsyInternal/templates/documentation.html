@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation - Ziqsy Internal{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/dashboard" class="ziqsy-logo-link">
+                <h3 class="ziqsy-logo">Z<span class="dna-i">i</span>qsy</h3>
+            </a>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+            <!-- Dashboard button -->
+            <div class="dashboard-nav mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-primary w-100 sidebar-btn">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            
+            <!-- Categories section -->
+            <div class="categories-header mb-2">
+                <h6 class="mb-0 text-uppercase text-white" style="font-size: 0.75rem; letter-spacing: 0.5px;">Categories</h6>
+            </div>
+            
+            <div class="sidebar-actions mb-3">
+                <button class="btn btn-sm btn-outline-light mb-2 sidebar-btn" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+                    <i class="fas fa-plus"></i>
+                    <span>New Section</span>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary sidebar-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                    <i class="fas fa-folder"></i>
+                    <span>Add Page</span>
+                </button>
+            </div>
+            
+            <div class="sections-list">
+                {% for section in sections %}
+                <div class="section-item">
+                    <div class="section-header">
+                        <h6 class="section-name">{{ section.name }}</h6>
+                    </div>
+                    <div class="pages-list">
+                        {% for p in section.pages %}
+                        <div class="page-item">
+                            <a href="{{ url_for('view_page', page_id=p.id) }}" class="page-link sidebar-btn">
+                                <i class="fas fa-{{ 'link' if p.page_type == 'link_operations' else 'list' if p.page_type == 'list' else 'chart-bar' if p.page_type == 'dataset' else 'folder' }}"></i>
+                                <span>{{ p.name }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="theme-selector mb-3">
+                <label class="theme-label mb-2 d-block">Theme:</label>
+                <select class="theme-dropdown w-100" id="themeSelector" onchange="changeTheme()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="modern">Modern</option>
+                    <option value="oldschool">Old School</option>
+                    <option value="steel">Steel</option>
+                    <option value="gold">Gold</option>
+                </select>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light sidebar-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="content-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <h2 class="mb-0">Documentation & Code Resources</h2>
+                    <span class="badge bg-info">Developer Resources</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="documentation-content">
+            <div class="hero-section mb-4">
+                <div class="hero-content text-center">
+                    <h1 class="hero-title">System Documentation</h1>
+                    <p class="hero-subtitle">Comprehensive guides and references for development and deployment</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <!-- Data Dictionary -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="doc-card">
+                        <div class="doc-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="doc-content">
+                            <h5 class="doc-title">Data Dictionary</h5>
+                            <p class="doc-description">Complete database schema reference with table structures, relationships, and data patterns.</p>
+                            <div class="doc-actions">
+                                <a href="{{ url_for('view_documentation', doc_type='data-dictionary') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                                <a href="{{ url_for('download_documentation', doc_type='data-dictionary') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-download me-1"></i>Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Code Dictionary -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="doc-card">
+                        <div class="doc-icon">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <div class="doc-content">
+                            <h5 class="doc-title">Code Dictionary</h5>
+                            <p class="doc-description">Complete codebase reference with architecture overview, functions, and implementation patterns.</p>
+                            <div class="doc-actions">
+                                <a href="{{ url_for('view_documentation', doc_type='code-dictionary') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                                <a href="{{ url_for('download_documentation', doc_type='code-dictionary') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-download me-1"></i>Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Deployment Guide -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="doc-card">
+                        <div class="doc-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="doc-content">
+                            <h5 class="doc-title">Deployment Guide</h5>
+                            <p class="doc-description">Production deployment instructions with server setup, configuration, and scaling considerations.</p>
+                            <div class="doc-actions">
+                                <a href="{{ url_for('view_documentation', doc_type='deployment-guide') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                                <a href="{{ url_for('download_documentation', doc_type='deployment-guide') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-download me-1"></i>Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Troubleshooting -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="doc-card">
+                        <div class="doc-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <div class="doc-content">
+                            <h5 class="doc-title">Troubleshooting</h5>
+                            <p class="doc-description">Issue resolution guide with common errors, diagnostic commands, and recovery procedures.</p>
+                            <div class="doc-actions">
+                                <a href="{{ url_for('view_documentation', doc_type='troubleshooting') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                                <a href="{{ url_for('download_documentation', doc_type='troubleshooting') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-download me-1"></i>Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Site Navigation -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="doc-card">
+                        <div class="doc-icon">
+                            <i class="fas fa-sitemap"></i>
+                        </div>
+                        <div class="doc-content">
+                            <h5 class="doc-title">Site Navigation</h5>
+                            <p class="doc-description">Navigation structure, page definitions, and user interface reference guide.</p>
+                            <div class="doc-actions">
+                                <a href="{{ url_for('view_documentation', doc_type='site-navigation') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                                <a href="{{ url_for('download_documentation', doc_type='site-navigation') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-download me-1"></i>Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="info-section">
+                        <h4>Documentation Overview</h4>
+                        <p>This documentation package provides comprehensive reference materials for developers, system administrators, and maintainers of the Ziqsy Internal Admin System.</p>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <h6>For Developers</h6>
+                                <ul>
+                                    <li>Code Dictionary - Architecture and implementation details</li>
+                                    <li>Data Dictionary - Database schema and relationships</li>
+                                    <li>Site Navigation - UI structure and user flows</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>For Operations</h6>
+                                <ul>
+                                    <li>Deployment Guide - Production setup and configuration</li>
+                                    <li>Troubleshooting - Issue resolution and diagnostics</li>
+                                    <li>Site Navigation - System functionality reference</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.documentation-content {
+    padding: 20px;
+}
+
+.doc-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    height: 100%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.doc-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.doc-icon {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.doc-icon i {
+    font-size: 2.5rem;
+    color: var(--accent-color);
+}
+
+.doc-title {
+    color: var(--text-color);
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.doc-description {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.doc-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.info-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.info-section h4 {
+    color: var(--text-color);
+    margin-bottom: 16px;
+}
+
+.info-section h6 {
+    color: var(--accent-color);
+    margin-bottom: 8px;
+}
+
+.info-section ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.info-section li {
+    padding: 4px 0;
+    color: var(--text-muted);
+}
+
+.info-section li:before {
+    content: "▶ ";
+    color: var(--accent-color);
+    margin-right: 8px;
+}
+
+.sidebar-controls {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 15px;
+}
+
+.control-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white;
+    font-weight: 600;
+}
+
+.width-display {
+    font-size: 0.75rem;
+    color: white;
+    min-width: 45px;
+    text-align: center;
+}
+
+.form-range {
+    height: 4px;
+}
+
+.form-range::-webkit-slider-thumb {
+    background: var(--accent-color);
+}
+
+.form-range::-moz-range-thumb {
+    background: var(--accent-color);
+    border: none;
+}
+</style>
+
+
+
+{% include 'dashboard_modals.html' %}
+{% endblock %}

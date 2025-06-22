@@ -1,0 +1,695 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.name }} - Dataset{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/dashboard" class="ziqsy-logo-link">
+                <h3 class="ziqsy-logo">Z<span class="dna-i">i</span>qsy</h3>
+            </a>
+            <button class="toggle-btn" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+
+            
+            <!-- Categories section -->
+            <div class="categories-header mb-2">
+                <h6 class="mb-0 text-uppercase text-white" style="font-size: 0.75rem; letter-spacing: 0.5px;">Categories</h6>
+            </div>
+            
+            <div class="sidebar-actions mb-3">
+                <button class="btn btn-sm btn-outline-light mb-2 sidebar-btn" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+                    <i class="fas fa-plus"></i>
+                    <span>New Section</span>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary sidebar-btn" data-bs-toggle="modal" data-bs-target="#createPageModal">
+                    <i class="fas fa-folder"></i>
+                    <span>Add Page</span>
+                </button>
+            </div>
+            
+            <div class="sections-list">
+                {% for section in sections %}
+                <div class="section-item">
+                    <div class="section-header">
+                        <h6 class="section-name">{{ section.name }}</h6>
+                    </div>
+                    <div class="pages-list">
+                        {% for p in section.pages %}
+                        <div class="page-item {{ 'active' if p.id == page.id else '' }}">
+                            <a href="{{ url_for('view_page', page_id=p.id) }}" class="page-link sidebar-btn">
+                                <i class="fas fa-{{ 'link' if p.page_type == 'link_operations' else 'list' if p.page_type == 'list' else 'chart-bar' if p.page_type == 'dataset' else 'folder' }}"></i>
+                                <span>{{ p.name }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="theme-selector mb-3">
+                <label class="theme-label mb-2 d-block">Theme:</label>
+                <select class="theme-dropdown w-100" id="themeSelector" onchange="changeTheme()">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="modern">Modern</option>
+                    <option value="oldschool">Old School</option>
+                    <option value="steel">Steel</option>
+                    <option value="gold">Gold</option>
+                </select>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light sidebar-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="content-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <h2 class="mb-0">{{ page.name }} (Dataset)</h2>
+                    {% if page.table_name %}
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('export_page_data', page_id=page.id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-download me-1"></i>Export
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="upload-form">
+                    <form method="POST" action="{{ url_for('upload_file', page_id=page.id) }}" enctype="multipart/form-data" class="compact-form d-flex align-items-center gap-2">
+                        <input type="file" name="file" accept=".csv,.json,.xlsx,.xls,.md" required class="form-control form-control-sm" style="width: 200px;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-upload me-1"></i>Upload
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+            
+            {% if page.table_name %}
+            <a href="{{ url_for('export_page_data', page_id=page.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-download me-1"></i>Export Data
+            </a>
+            {% endif %}
+        </div>
+        
+        <div class="dataset-layout">
+            <!-- Data View Tabs -->
+            <div class="dataset-tabs">
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tableView" type="button">
+                            <i class="fas fa-table me-1"></i>Table View
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#chartView" type="button">
+                            <i class="fas fa-chart-bar me-1"></i>Charts
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#analysisView" type="button">
+                            <i class="fas fa-brain me-1"></i>Analysis
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#chatView" type="button">
+                            <i class="fas fa-comments me-1"></i>AI Assistant
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Table View -->
+                <div class="tab-pane fade show active" id="tableView">
+                    <div class="dataset-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Rows:</span>
+                            <span id="rowCount" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Columns:</span>
+                            <span id="columnCount" class="stat-value">0</span>
+                        </div>
+                    </div>
+                    
+                    <div id="datasetTable" class="dataset-table">
+                        <!-- Table will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Chart View -->
+                <div class="tab-pane fade" id="chartView">
+                    <div class="chart-controls">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Chart Type:</label>
+                                <select id="chartType" class="form-control">
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="line">Line Chart</option>
+                                    <option value="pie">Pie Chart</option>
+                                    <option value="scatter">Scatter Plot</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">X-Axis:</label>
+                                <select id="xAxis" class="form-control">
+                                    <!-- Options will be populated -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Y-Axis:</label>
+                                <select id="yAxis" class="form-control">
+                                    <!-- Options will be populated -->
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary mt-2" onclick="generateChart()">Generate Chart</button>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="datasetChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Analysis View -->
+                <div class="tab-pane fade" id="analysisView">
+                    <div class="analysis-tools">
+                        <h5>Data Analysis Tools</h5>
+                        
+                        <div class="tool-section">
+                            <h6>Data Cleaning</h6>
+                            <button class="btn btn-outline-primary" onclick="analyzeData('duplicates')">Find Duplicates</button>
+                            <button class="btn btn-outline-primary" onclick="analyzeData('missing')">Check Missing Values</button>
+                            <button class="btn btn-outline-primary" onclick="analyzeData('normalize')">Normalize Data</button>
+                        </div>
+                        
+                        <div class="tool-section">
+                            <h6>Statistical Analysis</h6>
+                            <button class="btn btn-outline-info" onclick="analyzeData('describe')">Describe Dataset</button>
+                            <button class="btn btn-outline-info" onclick="analyzeData('correlation')">Correlation Matrix</button>
+                        </div>
+                        
+                        <div id="analysisResults" class="analysis-results">
+                            <!-- Analysis results will appear here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI Assistant -->
+                <div class="tab-pane fade" id="chatView">
+                    <div class="chat-assistant">
+                        <div class="chat-header">
+                            <h5>AI Dataset Assistant</h5>
+                            <small class="text-muted">Ask questions about your dataset</small>
+                        </div>
+                        
+                        <div id="chatMessages" class="chat-messages">
+                            <div class="chat-message assistant">
+                                <strong>Assistant:</strong> Hello! I can help you analyze your dataset. Try asking me about patterns, trends, or data quality issues.
+                            </div>
+                        </div>
+                        
+                        <div class="chat-input">
+                            <div class="input-group">
+                                <input type="text" id="chatInput" class="form-control" placeholder="Ask about your dataset...">
+                                <button class="btn btn-primary" onclick="sendChatMessage()">Send</button>
+                            </div>
+                        </div>
+                        
+                        <div class="chat-suggestions">
+                            <small class="text-muted">Try asking:</small>
+                            <div class="suggestion-buttons">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="sendSuggestion('What patterns do you see in this data?')">Find Patterns</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="sendSuggestion('Are there any outliers?')">Check Outliers</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="sendSuggestion('Summarize this dataset')">Summarize Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let pageData = [];
+let columns = [];
+let currentChart = null;
+
+// Load data when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadPageData();
+});
+
+function loadPageData() {
+    fetch(`/api/page/{{ page.id }}/data`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Loaded data:', data);
+            pageData = data;
+            if (data.length > 0) {
+                columns = Object.keys(data[0]);
+                populateAxisSelectors();
+            }
+            renderDatasetTable();
+            updateStats();
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
+            console.log('Loaded data:', []); // Log empty array when error occurs
+        });
+}
+
+function renderDatasetTable() {
+    const datasetTable = document.getElementById('datasetTable');
+    
+    if (pageData.length === 0) {
+        datasetTable.innerHTML = '<p class="text-muted">No data available. Upload a CSV, JSON, or Excel file to get started.</p>';
+        return;
+    }
+    
+    const excludeFields = ['created_at', 'updated_at'];
+    const displayColumns = columns.filter(col => !excludeFields.includes(col));
+    
+    let html = '<div class="table-responsive"><table class="table table-striped table-hover table-sm">';
+    
+    // Header
+    html += '<thead><tr>';
+    displayColumns.forEach(column => {
+        html += `<th>${column.replace(/_/g, ' ').toUpperCase()}</th>`;
+    });
+    html += '</tr></thead>';
+    
+    // Body (limit to first 100 rows for performance)
+    html += '<tbody>';
+    const displayData = pageData.slice(0, 100);
+    displayData.forEach(item => {
+        html += '<tr>';
+        displayColumns.forEach(column => {
+            const value = item[column] || '';
+            html += `<td>${value}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    
+    if (pageData.length > 100) {
+        html += `<p class="text-muted">Showing first 100 rows of ${pageData.length} total rows.</p>`;
+    }
+    
+    datasetTable.innerHTML = html;
+}
+
+function updateStats() {
+    document.getElementById('rowCount').textContent = pageData.length;
+    document.getElementById('columnCount').textContent = columns.length;
+}
+
+function populateAxisSelectors() {
+    const xAxis = document.getElementById('xAxis');
+    const yAxis = document.getElementById('yAxis');
+    
+    const numericColumns = columns.filter(col => {
+        return pageData.some(item => !isNaN(parseFloat(item[col])));
+    });
+    
+    // Populate X-axis (all columns)
+    xAxis.innerHTML = '';
+    columns.forEach(col => {
+        if (!['id', 'created_at', 'updated_at'].includes(col)) {
+            xAxis.innerHTML += `<option value="${col}">${col.replace(/_/g, ' ').toUpperCase()}</option>`;
+        }
+    });
+    
+    // Populate Y-axis (numeric columns)
+    yAxis.innerHTML = '';
+    numericColumns.forEach(col => {
+        if (!['id', 'created_at', 'updated_at'].includes(col)) {
+            yAxis.innerHTML += `<option value="${col}">${col.replace(/_/g, ' ').toUpperCase()}</option>`;
+        }
+    });
+}
+
+function generateChart() {
+    const chartType = document.getElementById('chartType').value;
+    const xColumn = document.getElementById('xAxis').value;
+    const yColumn = document.getElementById('yAxis').value;
+    
+    if (!xColumn || !yColumn) {
+        alert('Please select both X and Y axis columns');
+        return;
+    }
+    
+    const ctx = document.getElementById('datasetChart').getContext('2d');
+    
+    // Destroy existing chart
+    if (currentChart) {
+        currentChart.destroy();
+    }
+    
+    // Prepare data
+    const labels = pageData.map(item => item[xColumn]);
+    const values = pageData.map(item => parseFloat(item[yColumn]) || 0);
+    
+    const chartConfig = {
+        type: chartType,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: yColumn.replace(/_/g, ' ').toUpperCase(),
+                data: values,
+                backgroundColor: 'rgba(139, 135, 125, 0.2)',
+                borderColor: 'rgba(139, 135, 125, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: chartType !== 'pie' ? {
+                y: {
+                    beginAtZero: true
+                }
+            } : {}
+        }
+    };
+    
+    currentChart = new Chart(ctx, chartConfig);
+}
+
+function analyzeData(analysisType) {
+    const resultsDiv = document.getElementById('analysisResults');
+    
+    switch(analysisType) {
+        case 'duplicates':
+            findDuplicates();
+            break;
+        case 'missing':
+            checkMissingValues();
+            break;
+        case 'normalize':
+            normalizeData();
+            break;
+        case 'describe':
+            describeDataset();
+            break;
+        case 'correlation':
+            showCorrelationMatrix();
+            break;
+    }
+    
+    function findDuplicates() {
+        const duplicates = [];
+        const seen = new Set();
+        
+        pageData.forEach((item, index) => {
+            const key = JSON.stringify(item);
+            if (seen.has(key)) {
+                duplicates.push(index);
+            } else {
+                seen.add(key);
+            }
+        });
+        
+        resultsDiv.innerHTML = `
+            <div class="alert alert-info">
+                <h6>Duplicate Analysis</h6>
+                <p>Found ${duplicates.length} duplicate rows out of ${pageData.length} total rows.</p>
+                ${duplicates.length > 0 ? `<p>Duplicate row indices: ${duplicates.join(', ')}</p>` : ''}
+            </div>
+        `;
+    }
+    
+    function checkMissingValues() {
+        const missing = {};
+        columns.forEach(col => {
+            missing[col] = pageData.filter(item => !item[col] || item[col] === '').length;
+        });
+        
+        let html = '<div class="alert alert-warning"><h6>Missing Values Analysis</h6>';
+        for (const [col, count] of Object.entries(missing)) {
+            const percentage = ((count / pageData.length) * 100).toFixed(1);
+            html += `<p><strong>${col}:</strong> ${count} missing (${percentage}%)</p>`;
+        }
+        html += '</div>';
+        
+        resultsDiv.innerHTML = html;
+    }
+    
+    function normalizeData() {
+        resultsDiv.innerHTML = `
+            <div class="alert alert-success">
+                <h6>Data Normalization</h6>
+                <p>Data normalization would standardize numeric values to a common scale.</p>
+                <p>This is a simulation - in a real implementation, this would apply normalization algorithms.</p>
+            </div>
+        `;
+    }
+    
+    function describeDataset() {
+        const numericColumns = columns.filter(col => {
+            return pageData.some(item => !isNaN(parseFloat(item[col])));
+        });
+        
+        let html = '<div class="alert alert-info"><h6>Dataset Description</h6>';
+        html += `<p><strong>Total Rows:</strong> ${pageData.length}</p>`;
+        html += `<p><strong>Total Columns:</strong> ${columns.length}</p>`;
+        html += `<p><strong>Numeric Columns:</strong> ${numericColumns.length}</p>`;
+        html += `<p><strong>Text Columns:</strong> ${columns.length - numericColumns.length}</p>`;
+        
+        if (numericColumns.length > 0) {
+            html += '<h6>Numeric Column Statistics:</h6>';
+            numericColumns.forEach(col => {
+                const values = pageData.map(item => parseFloat(item[col])).filter(v => !isNaN(v));
+                if (values.length > 0) {
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2);
+                    html += `<p><strong>${col}:</strong> Min: ${min}, Max: ${max}, Avg: ${avg}</p>`;
+                }
+            });
+        }
+        
+        html += '</div>';
+        resultsDiv.innerHTML = html;
+    }
+    
+    function showCorrelationMatrix() {
+        resultsDiv.innerHTML = `
+            <div class="alert alert-secondary">
+                <h6>Correlation Matrix</h6>
+                <p>A correlation matrix would show relationships between numeric variables.</p>
+                <p>This feature would require advanced statistical calculations in a full implementation.</p>
+            </div>
+        `;
+    }
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    const chatMessages = document.getElementById('chatMessages');
+    
+    // Add user message
+    chatMessages.innerHTML += `
+        <div class="chat-message user">
+            <strong>You:</strong> ${message}
+        </div>
+    `;
+    
+    // Show loading indicator
+    chatMessages.innerHTML += `
+        <div class="chat-message assistant loading">
+            <strong>Assistant:</strong> <i class="fas fa-spinner fa-spin"></i> Analyzing your dataset...
+        </div>
+    `;
+    
+    // Call real AI API
+    fetch('/api/ai/analyze-dataset', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            page_id: {{ page.id }},
+            question: message,
+            model_id: 'gpt-4o'  // Default to GPT-4o, can be made configurable later
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Remove loading indicator
+        const loadingMessage = chatMessages.querySelector('.loading');
+        if (loadingMessage) {
+            loadingMessage.remove();
+        }
+        
+        if (data.error) {
+            chatMessages.innerHTML += `
+                <div class="chat-message assistant error">
+                    <strong>Assistant:</strong> <i class="fas fa-exclamation-triangle"></i> Sorry, I encountered an error: ${data.error}
+                </div>
+            `;
+        } else {
+            chatMessages.innerHTML += `
+                <div class="chat-message assistant">
+                    <strong>Assistant (${data.model_used}):</strong> ${formatAIResponse(data.response)}
+                </div>
+            `;
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    })
+    .catch(error => {
+        // Remove loading indicator
+        const loadingMessage = chatMessages.querySelector('.loading');
+        if (loadingMessage) {
+            loadingMessage.remove();
+        }
+        
+        chatMessages.innerHTML += `
+            <div class="chat-message assistant error">
+                <strong>Assistant:</strong> <i class="fas fa-exclamation-triangle"></i> Connection error: ${error.message}
+            </div>
+        `;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+    
+    // Clear input safely
+    if (input && input.type !== 'file') {
+        try {
+            input.value = '';
+        } catch (e) {
+            input.setAttribute('value', '');
+        }
+    }
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function formatAIResponse(response) {
+    // Convert markdown-like formatting to HTML
+    let formatted = response
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+    
+    return '<div class="ai-response-content">' + formatted + '</div>';
+}
+
+function sendSuggestion(suggestion) {
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput && chatInput.type !== 'file') {
+        chatInput.value = suggestion;
+        sendChatMessage();
+    }
+}
+
+function generateAIResponse(message) {
+    const responses = {
+        'patterns': `Based on your dataset with ${pageData.length} rows and ${columns.length} columns, I can see several interesting patterns. The data structure suggests relationships between variables that could be further analyzed with correlation analysis.`,
+        'outliers': `I would recommend checking for outliers in your numeric columns. Values that are more than 2 standard deviations from the mean could be considered outliers and may need investigation.`,
+        'summarize': `Your dataset contains ${pageData.length} records across ${columns.length} different attributes. The data appears to be structured and suitable for analysis. Consider focusing on the relationships between key variables.`,
+        'default': `That's an interesting question about your dataset. With ${pageData.length} rows of data, there are many analytical approaches we could take. Would you like me to help you explore specific columns or relationships?`
+    };
+    
+    const lowerMessage = message.toLowerCase();
+    if (lowerMessage.includes('pattern')) return responses.patterns;
+    if (lowerMessage.includes('outlier')) return responses.outliers;
+    if (lowerMessage.includes('summarize') || lowerMessage.includes('summary')) return responses.summarize;
+    
+    return responses.default;
+}
+
+// Allow Enter key in chat
+document.getElementById('chatInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendChatMessage();
+    }
+});
+</script>
+
+<!-- Create Section Modal -->
+<div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSectionModalLabel">Create New Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_section') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sectionName" class="form-label">Section Name</label>
+                        <input type="text" class="form-control" id="sectionName" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Section</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Page Modal -->
+<div class="modal fade" id="createPageModal" tabindex="-1" aria-labelledby="createPageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPageModalLabel">Create New Page</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_page') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="pageName" class="form-label">Page Name</label>
+                        <input type="text" class="form-control" id="pageName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pageType" class="form-label">Page Type</label>
+                        <select class="form-select" id="pageType" name="page_type" required>
+                            <option value="">Select page type...</option>
+                            <option value="link_operations">Link Operations</option>
+                            <option value="list">List</option>
+                            <option value="dataset">Dataset</option>
+                            <option value="repository">Repository</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sectionId" class="form-label">Section</label>
+                        <select class="form-select" id="sectionId" name="section_id" required>
+                            <option value="">Select section...</option>
+                            {% for section in sections %}
+                            <option value="{{ section.id }}">{{ section.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
